@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -278,12 +279,21 @@ func TestAuthenticationDataTableSchema(t *testing.T) {
 }
 
 // TestAllTablesMigrationHaveVersionAndTimestamps verifies that mutable data table
-// migrations include version, created_at, and updated_at columns for optimistic locking.
+// migrations include version, created_at, and updated_at column definitions for
+// optimistic locking.
 // Based on: docs/data-model.md §9.2 (Data Versioning)
 func TestAllTablesMigrationHaveVersionAndTimestamps(t *testing.T) {
 	migrations, err := db.ParseMigrations(FS)
 	if err != nil {
 		t.Fatalf("ParseMigrations(FS) error = %v", err)
+	}
+
+	// Match actual column definitions (indented column name followed by type),
+	// not just any occurrence of the word in comments or elsewhere.
+	colDefPatterns := map[string]*regexp.Regexp{
+		"version":    regexp.MustCompile(`(?m)^\s+version\s+BIGINT\b`),
+		"created_at": regexp.MustCompile(`(?m)^\s+created_at\s+TIMESTAMPTZ\b`),
+		"updated_at": regexp.MustCompile(`(?m)^\s+updated_at\s+TIMESTAMPTZ\b`),
 	}
 
 	// Exceptions: tables that intentionally omit version/updated_at
@@ -295,14 +305,11 @@ func TestAllTablesMigrationHaveVersionAndTimestamps(t *testing.T) {
 		if skipVersionCheck[m.Version] {
 			continue
 		}
-		if !strings.Contains(m.SQL, "version") {
-			t.Errorf("migration %d (%s) missing 'version' column", m.Version, m.Description)
-		}
-		if !strings.Contains(m.SQL, "created_at") {
-			t.Errorf("migration %d (%s) missing 'created_at' column", m.Version, m.Description)
-		}
-		if !strings.Contains(m.SQL, "updated_at") {
-			t.Errorf("migration %d (%s) missing 'updated_at' column", m.Version, m.Description)
+		for colName, pattern := range colDefPatterns {
+			if !pattern.MatchString(m.SQL) {
+				t.Errorf("migration %d (%s) missing column definition for %q",
+					m.Version, m.Description, colName)
+			}
 		}
 	}
 }
