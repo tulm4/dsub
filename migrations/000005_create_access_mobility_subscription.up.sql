@@ -1,0 +1,47 @@
+-- Based on: docs/data-model.md §3.4 (AM Subscription Data)
+-- 3GPP: TS 29.505 — AccessAndMobilitySubscriptionData
+
+CREATE TABLE udm.access_mobility_subscription (
+    supi                    TEXT        NOT NULL,
+    serving_plmn_id         TEXT        NOT NULL DEFAULT '00000',
+    gpsis                   TEXT[],
+    internal_group_ids      TEXT[],
+    shared_data_ids         TEXT[],
+    subscribed_ue_ambr      JSONB,
+    nssai                   JSONB,
+    rat_restrictions        JSONB,
+    forbidden_areas         JSONB,
+    service_area_restriction JSONB,
+    core_network_type_restrictions JSONB,
+    rfsp_index              INTEGER,
+    subs_reg_timer          INTEGER,
+    ue_usage_type           INTEGER,
+    mps_priority            BOOLEAN     NOT NULL DEFAULT FALSE,
+    mcs_priority            BOOLEAN     NOT NULL DEFAULT FALSE,
+    active_time             INTEGER,
+    sor_info                JSONB,
+    sor_info_expect_ind     BOOLEAN     NOT NULL DEFAULT FALSE,
+    soraf_retrieval         BOOLEAN     NOT NULL DEFAULT FALSE,
+    sor_update_indicator_list JSONB,
+    upu_info                JSONB,
+    routing_indicator       TEXT,
+    mico_allowed            BOOLEAN     NOT NULL DEFAULT FALSE,
+    shared_am_data_ids      TEXT[],
+    odb_packet_services     TEXT,
+    subscribed_dnn_list     TEXT[],
+    service_gap_time        INTEGER,
+    trace_data              JSONB,
+    cag_data                JSONB,
+    wireline_area           JSONB,
+    wireline_forbidden_areas JSONB,
+    ec_restriction_data     JSONB,
+    adjacent_plmn_restrictions JSONB,
+    remote_prov_ind         BOOLEAN     NOT NULL DEFAULT FALSE,
+    version                 BIGINT      NOT NULL DEFAULT 1,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (supi, serving_plmn_id),
+    CONSTRAINT fk_am_subscriber
+        FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
+) SPLIT INTO 128 TABLETS;
