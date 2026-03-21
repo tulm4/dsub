@@ -402,7 +402,7 @@ func TestIntegrationMigrationVersionTracking(t *testing.T) {
 		t.Errorf("applied count = %d, want %d", len(applied), expectedApplied)
 	}
 
-	// Verify versions are sequential (1..25, gap at 26)
+	// Verify versions are sequential (1..25, skipped 26)
 	for i, v := range applied {
 		wantVersion := i + 1
 		if v != wantVersion {
