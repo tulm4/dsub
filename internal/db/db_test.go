@@ -5,6 +5,8 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestNewSelect(t *testing.T) {
@@ -69,7 +71,10 @@ func TestNewSelect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.builder.Build()
+			got, err := tt.builder.Build()
+			if err != nil {
+				t.Fatalf("Build() unexpected error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("Build() =\n  %q\nwant:\n  %q", got, tt.want)
 			}
@@ -109,11 +114,21 @@ func TestNewInsert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.builder.Build()
+			got, err := tt.builder.Build()
+			if err != nil {
+				t.Fatalf("Build() unexpected error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("Build() =\n  %q\nwant:\n  %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNewInsertNoColumns(t *testing.T) {
+	_, err := NewInsert("subscribers").Build()
+	if err == nil {
+		t.Fatal("Build() for INSERT without columns should return error")
 	}
 }
 
@@ -142,11 +157,21 @@ func TestNewUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.builder.Build()
+			got, err := tt.builder.Build()
+			if err != nil {
+				t.Fatalf("Build() unexpected error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("Build() =\n  %q\nwant:\n  %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNewUpdateNoSetClauses(t *testing.T) {
+	_, err := NewUpdate("subscribers").Where("supi = $1").Build()
+	if err == nil {
+		t.Fatal("Build() for UPDATE without SET clauses should return error")
 	}
 }
 
@@ -172,7 +197,10 @@ func TestNewDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.builder.Build()
+			got, err := tt.builder.Build()
+			if err != nil {
+				t.Fatalf("Build() unexpected error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("Build() =\n  %q\nwant:\n  %q", got, tt.want)
 			}
@@ -342,6 +370,25 @@ func TestIsSerializationConflict(t *testing.T) {
 		{
 			name: "generic error",
 			err:  fmt.Errorf("some error"),
+			want: false,
+		},
+		{
+			name: "pgx serialization conflict 40001",
+			err: &pgconn.PgError{
+				Code: "40001",
+			},
+			want: true,
+		},
+		{
+			name: "pgx wrapped serialization conflict",
+			err:  fmt.Errorf("query failed: %w", &pgconn.PgError{Code: "40001"}),
+			want: true,
+		},
+		{
+			name: "pgx other error code",
+			err: &pgconn.PgError{
+				Code: "23505",
+			},
 			want: false,
 		},
 	}

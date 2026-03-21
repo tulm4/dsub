@@ -149,6 +149,15 @@ func TestCounterAdd(t *testing.T) {
 	}
 }
 
+func TestCounterAddNegativeDelta(t *testing.T) {
+	c := NewCounter("udm_test_counter")
+	c.Add(10)
+	c.Add(-5) // should be silently ignored
+	if got := c.Value(); got != 10 {
+		t.Errorf("Value() = %d after negative Add, want 10 (negative delta should be ignored)", got)
+	}
+}
+
 func TestCounterConcurrency(t *testing.T) {
 	c := NewCounter("udm_concurrent_requests_total")
 

@@ -124,6 +124,30 @@ func TestReadJSON_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestReadJSON_TrailingJunk(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"a"}{"name":"b"}`))
+	var v struct {
+		Name string `json:"name"`
+	}
+	if err := ReadJSON(r, &v); err == nil {
+		t.Fatal("ReadJSON with trailing JSON document should return error")
+	}
+}
+
+func TestReadJSON_TrailingWhitespace(t *testing.T) {
+	// Trailing whitespace after a valid JSON document should be accepted.
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"name":"a"}   `))
+	var v struct {
+		Name string `json:"name"`
+	}
+	if err := ReadJSON(r, &v); err != nil {
+		t.Fatalf("ReadJSON with trailing whitespace should succeed, got: %v", err)
+	}
+	if v.Name != "a" {
+		t.Errorf("Name = %q, want %q", v.Name, "a")
+	}
+}
+
 func TestReadJSON_UnknownFields(t *testing.T) {
 	type payload struct {
 		Name string `json:"name"`

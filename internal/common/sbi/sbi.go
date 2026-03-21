@@ -89,17 +89,20 @@ func ReadJSON(r *http.Request, v any) error {
 		return fmt.Errorf("invalid JSON: %w", err)
 	}
 
-	// If there is still data after the first JSON value, the body exceeds the
-	// size limit (the limit reader already capped it at MaxRequestBodySize+1).
-	var extra json.RawMessage
-	if dec.More() {
-		if err := dec.Decode(&extra); err != nil && errors.Is(err, io.EOF) {
+	// After decoding the first JSON value, ensure there is no trailing data.
+	// A well-formed single JSON document must cause the next Decode to return io.EOF.
+	var extra struct{}
+	if err := dec.Decode(&extra); err != nil {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
-		return errors.New("request body too large")
+		// Non-EOF error here indicates trailing junk or a truncated/invalid body.
+		return fmt.Errorf("invalid JSON: %w", err)
 	}
 
-	return nil
+	// Successfully decoded a second top-level JSON value: treat as oversized body
+	// or multiple JSON documents, both of which are rejected.
+	return errors.New("request body too large")
 }
 
 // GetCorrelationInfo returns the value of the 3gpp-Sbi-Correlation-Info header.

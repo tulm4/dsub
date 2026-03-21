@@ -89,8 +89,12 @@ func (c *Counter) Inc() {
 	c.value.Add(1)
 }
 
-// Add adds the given value to the counter. Delta must be non-negative.
+// Add adds the given value to the counter. Delta must be non-negative;
+// negative values are silently ignored to preserve counter monotonicity.
 func (c *Counter) Add(delta int64) {
+	if delta < 0 {
+		return
+	}
 	c.value.Add(delta)
 }
 

@@ -21,7 +21,7 @@ func TestMemoryCacheGetSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mc := NewMemoryCache(500_000_000, 10*time.Second)
+			mc := NewMemoryCache(10*time.Second)
 			mc.Set(tt.key, tt.value)
 
 			got, ok := mc.Get(tt.key)
@@ -36,7 +36,7 @@ func TestMemoryCacheGetSet(t *testing.T) {
 }
 
 func TestMemoryCacheTTLExpiry(t *testing.T) {
-	mc := NewMemoryCache(500_000_000, 50*time.Millisecond)
+	mc := NewMemoryCache(50*time.Millisecond)
 	mc.Set("expiring-key", []byte("data"))
 
 	// Should be present immediately
@@ -53,7 +53,7 @@ func TestMemoryCacheTTLExpiry(t *testing.T) {
 }
 
 func TestMemoryCacheDelete(t *testing.T) {
-	mc := NewMemoryCache(500_000_000, 10*time.Second)
+	mc := NewMemoryCache(10*time.Second)
 	mc.Set("del-key", []byte("value"))
 
 	mc.Delete("del-key")
@@ -64,7 +64,7 @@ func TestMemoryCacheDelete(t *testing.T) {
 }
 
 func TestMemoryCacheGetNonExistent(t *testing.T) {
-	mc := NewMemoryCache(500_000_000, 10*time.Second)
+	mc := NewMemoryCache(10*time.Second)
 
 	val, ok := mc.Get("no-such-key")
 	if ok {
@@ -76,7 +76,7 @@ func TestMemoryCacheGetNonExistent(t *testing.T) {
 }
 
 func TestMemoryCacheConcurrentAccess(t *testing.T) {
-	mc := NewMemoryCache(500_000_000, 10*time.Second)
+	mc := NewMemoryCache(10*time.Second)
 	const goroutines = 100
 
 	var wg sync.WaitGroup
