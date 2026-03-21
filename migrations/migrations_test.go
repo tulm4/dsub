@@ -8,6 +8,14 @@ import (
 	"github.com/tulm4/dsub/internal/db"
 )
 
+// Column definition patterns for verifying versioning/timestamp columns.
+// Matches indented column definitions with their expected SQL types.
+var (
+	colDefVersion   = regexp.MustCompile(`(?m)^\s+version\s+BIGINT\b`)
+	colDefCreatedAt = regexp.MustCompile(`(?m)^\s+created_at\s+TIMESTAMPTZ\b`)
+	colDefUpdatedAt = regexp.MustCompile(`(?m)^\s+updated_at\s+TIMESTAMPTZ\b`)
+)
+
 // TestEmbeddedMigrationsParseable verifies that all embedded .up.sql migration files
 // are correctly parsed by the migration runner's ParseMigrations function.
 func TestEmbeddedMigrationsParseable(t *testing.T) {
@@ -288,12 +296,13 @@ func TestAllTablesMigrationHaveVersionAndTimestamps(t *testing.T) {
 		t.Fatalf("ParseMigrations(FS) error = %v", err)
 	}
 
-	// Match actual column definitions (indented column name followed by type),
-	// not just any occurrence of the word in comments or elsewhere.
+	// Use package-level regex patterns that match actual column definitions
+	// (indented column name followed by type), not just any occurrence of the
+	// word in comments or elsewhere.
 	colDefPatterns := map[string]*regexp.Regexp{
-		"version":    regexp.MustCompile(`(?m)^\s+version\s+BIGINT\b`),
-		"created_at": regexp.MustCompile(`(?m)^\s+created_at\s+TIMESTAMPTZ\b`),
-		"updated_at": regexp.MustCompile(`(?m)^\s+updated_at\s+TIMESTAMPTZ\b`),
+		"version":    colDefVersion,
+		"created_at": colDefCreatedAt,
+		"updated_at": colDefUpdatedAt,
 	}
 
 	// Exceptions: tables that intentionally omit version/updated_at
