@@ -24,8 +24,8 @@ func TestEmbeddedMigrationsParseable(t *testing.T) {
 		t.Fatalf("ParseMigrations(FS) error = %v", err)
 	}
 
-	// Phase 2 delivers 25 migration files (000001–000025)
-	const expectedCount = 25
+	// Phase 2 delivers 26 migration files (000001–000026)
+	const expectedCount = 26
 	if len(migrations) != expectedCount {
 		t.Fatalf("expected %d migrations, got %d", expectedCount, len(migrations))
 	}
@@ -105,6 +105,7 @@ func TestMigrationExpectedNames(t *testing.T) {
 		{23, "create_message_waiting_data"},
 		{24, "create_audit_log"},
 		{25, "create_indexes"},
+		{26, "create_tablespaces"},
 	}
 
 	if len(migrations) != len(expected) {
@@ -355,5 +356,38 @@ func TestForeignKeyConstraints(t *testing.T) {
 			t.Errorf("migration %d (%s) has unexpected FK to udm.subscribers(supi)",
 				m.Version, m.Description)
 		}
+	}
+}
+
+// TestTablespaceMigration validates the tablespace migration contains the expected
+// CREATE TABLESPACE statements for multi-region deployment.
+// Based on: docs/data-model.md §5.4 (Cross-Region Data Placement Policies)
+func TestTablespaceMigration(t *testing.T) {
+	migrations, err := db.ParseMigrations(FS)
+	if err != nil {
+		t.Fatalf("ParseMigrations(FS) error = %v", err)
+	}
+
+	ts := migrations[25] // 000026_create_tablespaces
+	if ts.Version != 26 {
+		t.Fatalf("tablespace migration version = %d, want 26", ts.Version)
+	}
+
+	expectedTablespaces := []string{
+		"ts_global",
+		"ts_us_local",
+		"ts_eu_local",
+	}
+	for _, name := range expectedTablespaces {
+		if !strings.Contains(ts.SQL, name) {
+			t.Errorf("tablespace migration missing tablespace: %s", name)
+		}
+	}
+
+	if !strings.Contains(ts.SQL, "CREATE TABLESPACE") {
+		t.Error("tablespace migration missing CREATE TABLESPACE statement")
+	}
+	if !strings.Contains(ts.SQL, "replica_placement") {
+		t.Error("tablespace migration missing replica_placement configuration")
 	}
 }

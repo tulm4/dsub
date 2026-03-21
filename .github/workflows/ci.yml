@@ -1,0 +1,147 @@
+# CI pipeline for the 5G UDM (dsub) project.
+# Based on: docs/testing-strategy.md §7 (CI/CD Integration)
+#
+# Strategy:
+#   - fast-tests:        Runs on every PR — lint, vet, unit tests, build, coverage.
+#                         Uses Go module caching for speed. No database required.
+#
+#   - integration-tests: Runs on merge to main and on schedule (nightly).
+#                         Spins up a single-node YugabyteDB via Docker service container
+#                         and runs integration tests with -tags=integration.
+#                         Single-node is sufficient to validate schema correctness,
+#                         FK constraints, indexes, and CRUD operations.
+#
+# Trade-offs:
+#   Single-node YugabyteDB in CI covers: schema DDL, migrations, CRUD, FK cascade,
+#   index creation, and JSONB queries. It does NOT cover: multi-region placement,
+#   tablet splitting behavior, or cross-node Raft consensus — those require a
+#   multi-node cluster tested in staging/nightly environments.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly at 02:00 UTC — deeper integration tests
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Fast Tests — runs on every PR push
+  # Gate G1 (Lint) + G2 (Unit Tests) from docs/testing-strategy.md §1.3
+  # ─────────────────────────────────────────────────────────────
+  fast-tests:
+    name: Lint, Unit Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Run unit tests
+        run: go test ./... -count=1 -timeout 60s -race
+
+      - name: Run unit tests with coverage
+        run: |
+          go test ./... -count=1 -timeout 60s -coverprofile=coverage.out
+          go tool cover -func=coverage.out
+
+      - name: Build
+        run: CGO_ENABLED=0 go build ./...
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  # ─────────────────────────────────────────────────────────────
+  # Integration Tests — runs on merge to main + nightly schedule
+  # Gate G3 (Integration Tests) from docs/testing-strategy.md §1.3
+  #
+  # Uses single-node YugabyteDB (YSQL on port 5433):
+  #   - Validates: schema DDL, migration ordering, FK constraints,
+  #     index creation, CRUD operations, cascade deletes
+  #   - Does NOT validate: multi-node replication, tablet splitting,
+  #     cross-region placement (requires multi-node staging cluster)
+  # ─────────────────────────────────────────────────────────────
+  integration-tests:
+    name: Integration Tests (YugabyteDB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+
+    services:
+      yugabytedb:
+        image: yugabytedb/yugabyte:2024.2.3.0-b0
+        env:
+          YSQL_USER: yugabyte
+          YSQL_PASSWORD: yugabyte
+          YSQL_DB: yugabyte
+        ports:
+          - 5433:5433   # YSQL (PostgreSQL-compatible)
+          - 7000:7000   # Master web UI
+          - 9000:9000   # TServer web UI
+        options: >-
+          --health-cmd "postgres/bin/pg_isready -h localhost -p 5433 -U yugabyte"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Wait for YugabyteDB readiness
+        run: |
+          echo "Waiting for YugabyteDB YSQL to accept connections..."
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -p 5433 -U yugabyte 2>/dev/null; then
+              echo "YugabyteDB is ready."
+              exit 0
+            fi
+            echo "  Attempt $i/30 — waiting 5s..."
+            sleep 5
+          done
+          echo "ERROR: YugabyteDB did not become ready in time."
+          exit 1
+
+      - name: Run integration tests
+        env:
+          YUGABYTE_DSN: "postgres://yugabyte:yugabyte@localhost:5433/yugabyte?sslmode=disable"
+        run: |
+          go test ./migrations/... \
+            -tags=integration \
+            -count=1 \
+            -timeout 5m \
+            -v
