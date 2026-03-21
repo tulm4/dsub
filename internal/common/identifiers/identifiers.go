@@ -68,6 +68,12 @@ func ValidateSUPI(supi string) error {
 
 // ParseSUPI parses a SUPI string and returns its MCC, MNC, and MSIN
 // components. It returns an error if the SUPI format is invalid.
+//
+// Note: For 15-digit IMSIs, the regex greedily matches 3-digit MNC. This
+// means PLMNs that use a 2-digit MNC with a 10-digit MSIN will be parsed
+// as 3-digit MNC + 9-digit MSIN. Correct disambiguation requires external
+// PLMN context (e.g., an MCC-to-MNC-length lookup table), which will be
+// added when service-level PLMN configuration is available.
 func ParseSUPI(supi string) (mcc, mnc, msin string, err error) {
 	if err = ValidateSUPI(supi); err != nil {
 		return "", "", "", err

@@ -32,7 +32,7 @@ func NewRedisCache(addrs []string, password string, ttl time.Duration) *RedisCac
 func (r *RedisCache) Get(ctx context.Context, key string) ([]byte, error) {
 	val, err := r.client.Get(ctx, key).Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("redis get %s: %w", key, err)
+		return nil, fmt.Errorf("redis get: %w", err)
 	}
 	return val, nil
 }
@@ -40,7 +40,7 @@ func (r *RedisCache) Get(ctx context.Context, key string) ([]byte, error) {
 // Set stores a value in Redis with TTL.
 func (r *RedisCache) Set(ctx context.Context, key string, value []byte) error {
 	if err := r.client.Set(ctx, key, value, r.ttl).Err(); err != nil {
-		return fmt.Errorf("redis set %s: %w", key, err)
+		return fmt.Errorf("redis set: %w", err)
 	}
 	return nil
 }
@@ -48,7 +48,7 @@ func (r *RedisCache) Set(ctx context.Context, key string, value []byte) error {
 // Delete removes a key from Redis.
 func (r *RedisCache) Delete(ctx context.Context, key string) error {
 	if err := r.client.Del(ctx, key).Err(); err != nil {
-		return fmt.Errorf("redis del %s: %w", key, err)
+		return fmt.Errorf("redis del: %w", err)
 	}
 	return nil
 }

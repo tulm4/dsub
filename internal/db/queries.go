@@ -100,14 +100,18 @@ func (q *QueryBuilder) OnConflict(clause string) *QueryBuilder {
 	return q
 }
 
-// Build generates the SQL query string.
-func (q *QueryBuilder) Build() string {
+// Build generates the SQL query string. It returns an error if the query
+// builder state is invalid (e.g., INSERT without columns, UPDATE without SET).
+func (q *QueryBuilder) Build() (string, error) {
 	var sb strings.Builder
 
 	switch q.operation {
 	case "SELECT":
 		fmt.Fprintf(&sb, "SELECT %s FROM %s", strings.Join(q.columns, ", "), q.table)
 	case "INSERT":
+		if len(q.columns) == 0 {
+			return "", fmt.Errorf("db: INSERT requires at least one column")
+		}
 		placeholders := make([]string, len(q.columns))
 		for i := range q.columns {
 			placeholders[i] = fmt.Sprintf("$%d", i+1)
@@ -120,6 +124,9 @@ func (q *QueryBuilder) Build() string {
 			fmt.Fprintf(&sb, " ON CONFLICT %s", q.onConflict)
 		}
 	case "UPDATE":
+		if len(q.setClauses) == 0 {
+			return "", fmt.Errorf("db: UPDATE requires at least one SET clause")
+		}
 		fmt.Fprintf(&sb, "UPDATE %s SET %s", q.table, strings.Join(q.setClauses, ", "))
 	case "DELETE":
 		fmt.Fprintf(&sb, "DELETE FROM %s", q.table)
@@ -141,5 +148,5 @@ func (q *QueryBuilder) Build() string {
 		fmt.Fprintf(&sb, " OFFSET %d", q.offset)
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }

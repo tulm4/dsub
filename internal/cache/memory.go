@@ -6,12 +6,13 @@ import (
 )
 
 // MemoryCache provides an in-memory L1 cache with TTL-based expiry.
-// Uses sync.Map for concurrent access with LRU-like behavior via TTL expiry.
+// Uses sync.Map for concurrent access. Entries are evicted only when their
+// TTL expires; there is no size-based eviction in Phase 1. Size-bounded
+// eviction (e.g., Ristretto) may be added in a later phase.
 // Based on: docs/service-decomposition.md §3.4
 type MemoryCache struct {
-	data    sync.Map
-	maxSize int64
-	ttl     time.Duration
+	data sync.Map
+	ttl  time.Duration
 }
 
 // entry represents a cached item with expiry.
@@ -20,11 +21,10 @@ type entry struct {
 	expiresAt time.Time
 }
 
-// NewMemoryCache creates a new in-memory cache.
-func NewMemoryCache(maxSize int64, ttl time.Duration) *MemoryCache {
+// NewMemoryCache creates a new in-memory cache with the given TTL.
+func NewMemoryCache(ttl time.Duration) *MemoryCache {
 	return &MemoryCache{
-		maxSize: maxSize,
-		ttl:     ttl,
+		ttl: ttl,
 	}
 }
 

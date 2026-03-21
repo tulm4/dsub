@@ -42,7 +42,7 @@ func DefaultConfig() Config {
 // If redisAddrs is empty, operates as L1-only cache.
 func New(cfg Config) *Cache {
 	c := &Cache{
-		l1: NewMemoryCache(cfg.L1MaxSize, cfg.L1TTL),
+		l1: NewMemoryCache(cfg.L1TTL),
 	}
 	if len(cfg.RedisAddrs) > 0 {
 		c.l2 = NewRedisCache(cfg.RedisAddrs, cfg.RedisPassword, cfg.L2TTL)
@@ -74,7 +74,8 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, bool) {
 func (c *Cache) Set(ctx context.Context, key string, value []byte) {
 	c.l1.Set(key, value)
 	if c.l2 != nil {
-		// Fail-open: log warning if Redis write fails but don't error
+		// Fail-open: silently drop Redis write errors to avoid blocking callers.
+		// Structured logging for Redis failures will be added in Phase 8 (Observability).
 		_ = c.l2.Set(ctx, key, value)
 	}
 }

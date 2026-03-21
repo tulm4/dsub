@@ -60,9 +60,12 @@ func WithTx(ctx context.Context, pool *pgxpool.Pool, opts TxOptions, fn func(tx 
 			if delay > opts.MaxRetryDelay {
 				delay = opts.MaxRetryDelay
 			}
-			// Add jitter (0-20% of delay)
-			jitter := time.Duration(rand.Int64N(int64(delay) / 5))
-			delay += jitter
+			// Add jitter (0-20% of delay). Guard upper bound so rand.Int64N never receives 0.
+			maxJitter := int64(delay) / 5
+			if maxJitter > 0 {
+				jitter := time.Duration(rand.Int64N(maxJitter))
+				delay += jitter
+			}
 
 			select {
 			case <-ctx.Done():
