@@ -161,8 +161,8 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 2 |
 | **Name** | Database Schema & Data Model |
-| **Status** | NOT_STARTED |
-| **Progress** | 0% |
+| **Status** | DONE |
+| **Progress** | 100% |
 | **Last Updated** | 2026-03-21 |
 | **Owner** | — |
 
@@ -189,12 +189,12 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - Tablespace definitions for geo-distribution (global RF=3, region-local RF=3)
 
 **Deliverables**:
-- [ ] Complete SQL schema migration files for all 20+ tables
-- [ ] Indexing strategy implementation (GIN indexes for JSONB, B-tree for lookup columns)
-- [ ] Tablespace configuration for multi-region placement
-- [ ] Data partitioning and sharding configuration (hash partitioning on SUPI)
-- [ ] Migration runner integration tests against YugabyteDB
-- [ ] Storage estimation validation
+- [x] Complete SQL schema migration files for all 20+ tables
+- [x] Indexing strategy implementation (GIN indexes for JSONB, B-tree for lookup columns)
+- [x] Tablespace configuration for multi-region placement
+- [x] Data partitioning and sharding configuration (hash partitioning on SUPI)
+- [x] Migration runner integration tests against YugabyteDB
+- [x] Storage estimation validation
 
 **Dependencies**: Phase 1 (shared libraries, db package)
 
@@ -750,7 +750,7 @@ Phase 1 (Foundation)
 | Phase | Name | Status | Progress | Last Updated | Dependencies |
 |-------|------|--------|----------|--------------|--------------|
 | 1 | Foundation & Shared Libraries | DONE | 100% | 2026-03-21 | None |
-| 2 | Database Schema & Data Model | NOT_STARTED | 0% | 2026-03-21 | Phase 1 |
+| 2 | Database Schema & Data Model | DONE | 100% | 2026-03-21 | Phase 1 |
 | 3 | Core High-Traffic Services (UEAU, SDM, UECM) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2 |
 | 4 | SUCI De-concealment & NRF Integration | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3 |
 | 5 | Medium-Traffic Services (EE, PP, MT) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 3 |
