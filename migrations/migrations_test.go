@@ -30,7 +30,7 @@ func TestEmbeddedMigrationsParseable(t *testing.T) {
 		t.Fatalf("expected %d migrations, got %d", expectedCount, len(migrations))
 	}
 
-	// Verify sequential ordering (versions 1..25)
+	// Verify sequential ordering (versions 1..26)
 	for i, m := range migrations {
 		wantVersion := i + 1
 		if m.Version != wantVersion {
