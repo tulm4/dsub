@@ -66,6 +66,23 @@ func cleanSchema(t *testing.T, pool *pgxpool.Pool) {
 	_, _ = pool.Exec(ctx, "DROP TABLE IF EXISTS schema_migrations")
 }
 
+// applyMigrations applies all parsed migrations. Tablespace migration (version 26)
+// is skipped on single-node YugabyteDB because CREATE TABLESPACE requires a
+// multi-node cluster with placement info configured on each tserver.
+func applyMigrations(t *testing.T, runner *db.MigrationRunner, migrations []db.Migration, ctx context.Context) {
+	t.Helper()
+	for _, m := range migrations {
+		// Skip tablespace migration — requires multi-node cluster
+		if m.Version == 26 {
+			t.Logf("skipping migration %d (%s): requires multi-node cluster", m.Version, m.Description)
+			continue
+		}
+		if err := runner.Apply(ctx, m); err != nil {
+			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
+		}
+	}
+}
+
 // TestIntegrationMigrationsApplyAll verifies that all migrations can be applied
 // sequentially against a real YugabyteDB instance without errors.
 func TestIntegrationMigrationsApplyAll(t *testing.T) {
@@ -85,19 +102,16 @@ func TestIntegrationMigrationsApplyAll(t *testing.T) {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
 
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
-		}
-	}
+	applyMigrations(t, runner, migrations, ctx)
 
-	// Verify all migrations recorded
+	// Verify all non-skipped migrations recorded (26 total - 1 skipped = 25)
 	applied, err := runner.GetAppliedVersions(ctx)
 	if err != nil {
 		t.Fatalf("GetAppliedVersions error: %v", err)
 	}
-	if len(applied) != len(migrations) {
-		t.Errorf("applied count = %d, want %d", len(applied), len(migrations))
+	expectedApplied := len(migrations) - 1 // minus tablespace migration
+	if len(applied) != expectedApplied {
+		t.Errorf("applied count = %d, want %d", len(applied), expectedApplied)
 	}
 }
 
@@ -120,13 +134,7 @@ func TestIntegrationSchemaTablesExist(t *testing.T) {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
 
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
-		}
-	}
-
-	// Query information_schema for tables in the udm schema
+	applyMigrations(t, runner, migrations, ctx)
 	expectedTables := []string{
 		"subscribers",
 		"authentication_data",
@@ -185,11 +193,7 @@ func TestIntegrationSubscriberCRUD(t *testing.T) {
 	if err := runner.EnsureMigrationTable(ctx); err != nil {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
-		}
-	}
+	applyMigrations(t, runner, migrations, ctx)
 
 	testSUPI := "imsi-001010000000001"
 
@@ -270,11 +274,7 @@ func TestIntegrationForeignKeyCascade(t *testing.T) {
 	if err := runner.EnsureMigrationTable(ctx); err != nil {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
-		}
-	}
+	applyMigrations(t, runner, migrations, ctx)
 
 	testSUPI := "imsi-001010000000099"
 
@@ -333,11 +333,7 @@ func TestIntegrationIndexesExist(t *testing.T) {
 	if err := runner.EnsureMigrationTable(ctx); err != nil {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("Apply migration %d (%s) error: %v", m.Version, m.Description, err)
-		}
-	}
+	applyMigrations(t, runner, migrations, ctx)
 
 	expectedIndexes := []string{
 		"idx_subscribers_gpsi",
@@ -374,9 +370,9 @@ func TestIntegrationIndexesExist(t *testing.T) {
 	}
 }
 
-// TestIntegrationMigrationIdempotency verifies that re-applying already-applied
-// migrations is properly handled by the migration runner.
-func TestIntegrationMigrationIdempotency(t *testing.T) {
+// TestIntegrationMigrationVersionTracking verifies that the migration runner
+// correctly records each applied migration version in the schema_migrations table.
+func TestIntegrationMigrationVersionTracking(t *testing.T) {
 	pool := testPool(t)
 	cleanSchema(t, pool)
 	t.Cleanup(func() { cleanSchema(t, pool) })
@@ -393,19 +389,24 @@ func TestIntegrationMigrationIdempotency(t *testing.T) {
 		t.Fatalf("EnsureMigrationTable error: %v", err)
 	}
 
-	// Apply all migrations
-	for _, m := range migrations {
-		if err := runner.Apply(ctx, m); err != nil {
-			t.Fatalf("first apply migration %d: %v", m.Version, err)
-		}
-	}
+	// Apply all migrations (skipping tablespace)
+	applyMigrations(t, runner, migrations, ctx)
 
-	// Verify version tracking count
+	// Verify version tracking count (26 total - 1 skipped = 25)
 	applied, err := runner.GetAppliedVersions(ctx)
 	if err != nil {
 		t.Fatalf("GetAppliedVersions error: %v", err)
 	}
-	if len(applied) != len(migrations) {
-		t.Errorf("first pass: applied count = %d, want %d", len(applied), len(migrations))
+	expectedApplied := len(migrations) - 1 // minus tablespace migration
+	if len(applied) != expectedApplied {
+		t.Errorf("applied count = %d, want %d", len(applied), expectedApplied)
+	}
+
+	// Verify versions are sequential (1..25, gap at 26)
+	for i, v := range applied {
+		wantVersion := i + 1
+		if v != wantVersion {
+			t.Errorf("applied[%d] = %d, want %d", i, v, wantVersion)
+		}
 	}
 }

@@ -63,7 +63,8 @@ func (m *MigrationRunner) GetAppliedVersions(ctx context.Context) ([]int, error)
 	return versions, rows.Err()
 }
 
-// Apply runs a single migration and records it in the tracking table.
+// Apply runs a single migration inside a transaction and records it in the tracking table.
+// Use ApplyNoTx for DDL statements that cannot run inside a transaction (e.g., CREATE TABLESPACE).
 func (m *MigrationRunner) Apply(ctx context.Context, migration Migration) error {
 	tx, err := m.pool.Begin(ctx)
 	if err != nil {
@@ -82,6 +83,23 @@ func (m *MigrationRunner) Apply(ctx context.Context, migration Migration) error 
 	}
 
 	return tx.Commit(ctx)
+}
+
+// ApplyNoTx runs a single migration WITHOUT a transaction wrapper and records it
+// in the tracking table. Use this for DDL statements that cannot execute inside a
+// transaction block (e.g., CREATE TABLESPACE in PostgreSQL/YugabyteDB).
+func (m *MigrationRunner) ApplyNoTx(ctx context.Context, migration Migration) error {
+	if _, err := m.pool.Exec(ctx, migration.SQL); err != nil {
+		return fmt.Errorf("db: execute migration %d (%s): %w", migration.Version, migration.Description, err)
+	}
+
+	if _, err := m.pool.Exec(ctx,
+		"INSERT INTO schema_migrations (version, description, applied_at) VALUES ($1, $2, $3)",
+		migration.Version, migration.Description, time.Now().UTC()); err != nil {
+		return fmt.Errorf("db: record migration %d: %w", migration.Version, err)
+	}
+
+	return nil
 }
 
 // ParseMigrations reads .up.sql migration files from an fs.FS and returns sorted Migrations.
