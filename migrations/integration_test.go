@@ -17,7 +17,6 @@ package migrations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -364,10 +363,8 @@ func TestIntegrationIndexesExist(t *testing.T) {
 	for _, idx := range expectedIndexes {
 		var exists bool
 		err := pool.QueryRow(ctx,
-			fmt.Sprintf(
-				"SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'udm' AND indexname = '%s')",
-				idx,
-			),
+			"SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'udm' AND indexname = $1)",
+			idx,
 		).Scan(&exists)
 		if err != nil {
 			t.Errorf("query index existence for %s: %v", idx, err)
