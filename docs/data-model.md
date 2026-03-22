@@ -941,6 +941,79 @@ CREATE TABLE udm.suci_profiles (
 
 ---
 
+### 3.25 vn_groups — 5G VN Group Configurations
+
+```sql
+CREATE TABLE udm.vn_groups (
+    ext_group_id            TEXT        NOT NULL,
+    dnn                     TEXT,
+    s_nssai                 JSONB,
+    pdu_session_types       TEXT[],
+    app_descriptors         JSONB,
+    secondary_auth          BOOLEAN     DEFAULT FALSE,
+    dn_aaa_address          JSONB,
+    dn_aaa_fqdn             TEXT,
+    members                 JSONB       NOT NULL DEFAULT '[]'::JSONB,
+    reference_id            TEXT,
+    af_instance_id          TEXT,
+    internal_group_identifier TEXT,
+    mtc_provider_information JSONB,
+    version                 BIGINT      NOT NULL DEFAULT 1,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (ext_group_id)
+) SPLIT INTO 32 TABLETS;
+```
+
+**Design notes:**
+- **No FK to subscribers** — VN groups are provisioning resources, not per-subscriber data
+- **members as JSONB** — stores array of GPSIs as JSON for flexibility
+
+---
+
+### 3.26 vn_group_members — 5G VN Group Members
+
+```sql
+CREATE TABLE udm.vn_group_members (
+    ext_group_id    TEXT        NOT NULL,
+    gpsi            TEXT        NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (ext_group_id, gpsi),
+    CONSTRAINT fk_vn_group_members_group
+        FOREIGN KEY (ext_group_id) REFERENCES udm.vn_groups(ext_group_id) ON DELETE CASCADE
+) SPLIT INTO 32 TABLETS;
+```
+
+**Design notes:**
+- **Composite PK** — each member belongs to exactly one group
+- **CASCADE delete** — members removed when group is deleted
+
+---
+
+### 3.27 mbs_group_membership — MBS Group Membership
+
+```sql
+CREATE TABLE udm.mbs_group_membership (
+    ext_group_id            TEXT        NOT NULL,
+    multicast_group_memb    JSONB       NOT NULL DEFAULT '[]'::JSONB,
+    af_instance_id          TEXT,
+    internal_group_identifier TEXT,
+    version                 BIGINT      NOT NULL DEFAULT 1,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (ext_group_id)
+) SPLIT INTO 16 TABLETS;
+```
+
+**Design notes:**
+- **No FK to subscribers** — MBS groups are provisioning resources
+- **multicast_group_memb as JSONB** — stores array of multicast members
+
+---
+
 ## 4. Indexing Strategy
 
 ### 4.1 Primary Indexes
