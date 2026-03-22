@@ -58,9 +58,9 @@ jobs:
         run: go vet ./...
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.64.8
+          version: v2.11.3
 
       - name: Run unit tests
         run: go test ./... -count=1 -timeout 60s -race
@@ -137,6 +137,7 @@ jobs:
           go test ./migrations/... ./internal/ueau/... ./internal/sdm/... ./internal/uecm/... ./internal/ueid/... \
             -tags=integration \
             -count=1 \
+            -p 1 \
             -timeout 5m \
             -v
 

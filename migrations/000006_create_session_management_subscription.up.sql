@@ -4,6 +4,8 @@
 CREATE TABLE udm.session_management_subscription (
     supi                    TEXT        NOT NULL,
     serving_plmn_id         TEXT        NOT NULL DEFAULT '00000',
+    nssai_sst               INTEGER     NOT NULL,
+    nssai_sd                TEXT        NOT NULL DEFAULT '',
     single_nssai            JSONB       NOT NULL,
     dnn_configurations      JSONB       NOT NULL DEFAULT '{}'::JSONB,
     internal_group_ids      TEXT[],
@@ -19,7 +21,7 @@ CREATE TABLE udm.session_management_subscription (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    PRIMARY KEY (supi, serving_plmn_id, single_nssai),
+    PRIMARY KEY (supi, serving_plmn_id, nssai_sst, nssai_sd),
     CONSTRAINT fk_sm_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
 ) SPLIT INTO 128 TABLETS;

@@ -84,7 +84,7 @@ CREATE INDEX idx_amf_reg_covering
 -- SM data hot path: SMF retrieves DNN configs for a subscriber/PLMN/slice.
 CREATE INDEX idx_sm_data_covering
     ON udm.session_management_subscription (supi, serving_plmn_id)
-    INCLUDE (single_nssai, dnn_configurations)
+    INCLUDE (nssai_sst, nssai_sd, single_nssai, dnn_configurations)
     SPLIT INTO 64 TABLETS;
 
 -- §4.4 JSONB Indexes for Nested Queries
