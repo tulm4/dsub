@@ -348,6 +348,17 @@ func (s *Service) Subscribe(ctx context.Context, ueID string, sub *SdmSubscripti
 		)
 	}
 
+	// SDM subscriptions must be SUPI-anchored (FK → subscribers.supi).
+	// Resolve GPSI to SUPI if the caller passed a GPSI.
+	supi := ueID
+	if identifiers.IsGPSI(ueID) {
+		resolved, err := s.resolveGPSItoSUPI(ctx, ueID)
+		if err != nil {
+			return nil, err
+		}
+		supi = resolved
+	}
+
 	if sub.NfInstanceID == "" {
 		return nil, errors.NewBadRequest("sdm: nfInstanceId is required", errors.CauseMandatoryIEMissing)
 	}
@@ -358,12 +369,18 @@ func (s *Service) Subscribe(ctx context.Context, ueID string, sub *SdmSubscripti
 		return nil, errors.NewBadRequest("sdm: monitoredResourceUris is required", errors.CauseMandatoryIEMissing)
 	}
 
+	// Map empty expiry to NULL to avoid sending empty strings to TIMESTAMPTZ.
+	var expiryParam any
+	if sub.ExpiryTime != "" {
+		expiryParam = sub.ExpiryTime
+	}
+
 	// Generate a subscription ID via the database
 	row := s.db.QueryRow(ctx,
-		`INSERT INTO udm.sdm_subscriptions (supi, nf_instance_id, callback_reference, monitored_resource_uris, expires)
+		`INSERT INTO udm.sdm_subscriptions (supi, nf_instance_id, callback_reference, monitored_resource_uris, expiry_time)
 		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING subscription_id`,
-		ueID, sub.NfInstanceID, sub.CallbackReference, sub.MonitoredResourceUris, sub.ExpiryTime,
+		supi, sub.NfInstanceID, sub.CallbackReference, sub.MonitoredResourceUris, expiryParam,
 	)
 
 	var subscriptionID string
@@ -391,15 +408,31 @@ func (s *Service) ModifySubscription(ctx context.Context, ueID, subscriptionID s
 		)
 	}
 
+	// SDM subscriptions are SUPI-keyed; resolve GPSI if needed.
+	supi := ueID
+	if identifiers.IsGPSI(ueID) {
+		resolved, err := s.resolveGPSItoSUPI(ctx, ueID)
+		if err != nil {
+			return nil, err
+		}
+		supi = resolved
+	}
+
+	// Map empty expiry to NULL to avoid sending empty strings to TIMESTAMPTZ.
+	var expiryParam any
+	if patch.ExpiryTime != "" {
+		expiryParam = patch.ExpiryTime
+	}
+
 	row := s.db.QueryRow(ctx,
 		`UPDATE udm.sdm_subscriptions
 		 SET callback_reference = COALESCE(NULLIF($1, ''), callback_reference),
 		     monitored_resource_uris = COALESCE($2, monitored_resource_uris),
-		     expires = COALESCE(NULLIF($3, ''), expires)
+		     expiry_time = COALESCE($3, expiry_time)
 		 WHERE subscription_id = $4 AND supi = $5
 		 RETURNING subscription_id`,
-		patch.CallbackReference, patch.MonitoredResourceUris, patch.ExpiryTime,
-		subscriptionID, ueID,
+		patch.CallbackReference, patch.MonitoredResourceUris, expiryParam,
+		subscriptionID, supi,
 	)
 
 	var updatedID string
@@ -426,9 +459,19 @@ func (s *Service) Unsubscribe(ctx context.Context, ueID, subscriptionID string) 
 		)
 	}
 
+	// SDM subscriptions are SUPI-keyed; resolve GPSI if needed.
+	supi := ueID
+	if identifiers.IsGPSI(ueID) {
+		resolved, err := s.resolveGPSItoSUPI(ctx, ueID)
+		if err != nil {
+			return err
+		}
+		supi = resolved
+	}
+
 	row := s.db.QueryRow(ctx,
 		`DELETE FROM udm.sdm_subscriptions WHERE subscription_id = $1 AND supi = $2 RETURNING subscription_id`,
-		subscriptionID, ueID,
+		subscriptionID, supi,
 	)
 
 	var deleted string
@@ -440,6 +483,24 @@ func (s *Service) Unsubscribe(ctx context.Context, ueID, subscriptionID string) 
 	}
 
 	return nil
+}
+
+// resolveGPSItoSUPI translates a GPSI to a SUPI via the subscribers table.
+// SDM subscriptions and related operations must be SUPI-anchored because the
+// schema FK references subscribers.supi.
+func (s *Service) resolveGPSItoSUPI(ctx context.Context, gpsi string) (string, error) {
+	row := s.db.QueryRow(ctx,
+		`SELECT supi FROM udm.subscribers WHERE gpsi = $1`,
+		gpsi,
+	)
+	var supi string
+	if err := row.Scan(&supi); err != nil {
+		return "", errors.NewNotFound(
+			fmt.Sprintf("sdm: subscriber not found for GPSI: %s", gpsi),
+			errors.CauseUserNotFound,
+		)
+	}
+	return supi, nil
 }
 
 // allowedTableColumns is a whitelist of valid table.column pairs for the

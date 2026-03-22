@@ -137,10 +137,13 @@ func (s *Service) GenerateAuthData(ctx context.Context, supiOrSuci string, req *
 	xresStar := DeriveXResStar(av.CK, av.IK, req.ServingNetworkName, randBytes, av.XRES)
 	kausf := DeriveKausf(av.CK, av.IK, req.ServingNetworkName, sqnXorAK)
 
-	// Increment SQN and update in database
+	// Atomically increment the SQN using optimistic locking. The WHERE clause
+	// checks the old SQN value so that concurrent callers cannot reuse the same
+	// sequence number (prevents replay). If a concurrent caller already
+	// incremented the SQN, this UPDATE matches zero rows → ErrNoRows → retry.
 	newSQN := incrementSQN(sqnBytes)
-	if err := s.updateSQN(ctx, supi, hex.EncodeToString(newSQN)); err != nil {
-		return nil, errors.NewInternalError("failed to update SQN")
+	if err := s.updateSQNOptimistic(ctx, supi, creds.SQN, hex.EncodeToString(newSQN)); err != nil {
+		return nil, errors.NewInternalError("failed to update SQN (concurrent modification)")
 	}
 
 	result := &AuthenticationInfoResult{
@@ -236,20 +239,29 @@ func (s *Service) getAuthCredentials(ctx context.Context, supi string) (*authCre
 	var creds authCredentials
 	err := row.Scan(&creds.SUPI, &creds.AuthMethod, &creds.K, &creds.OPc, &creds.SQN, &creds.AMFValue)
 	if err != nil {
-		return nil, errors.NewNotFound(
-			fmt.Sprintf("authentication data not found for SUPI: %s", supi),
-			errors.CauseUserNotFound,
+		if err == pgx.ErrNoRows {
+			return nil, errors.NewNotFound(
+				fmt.Sprintf("authentication data not found for SUPI: %s", supi),
+				errors.CauseUserNotFound,
+			)
+		}
+		return nil, errors.NewInternalError(
+			fmt.Sprintf("failed to query authentication data for SUPI %s: %s", supi, err),
 		)
 	}
 
 	return &creds, nil
 }
 
-// updateSQN atomically updates the SQN for a subscriber.
-func (s *Service) updateSQN(ctx context.Context, supi, newSQN string) error {
+// updateSQNOptimistic atomically updates the SQN for a subscriber using
+// optimistic locking. The UPDATE only matches when the current SQN equals
+// oldSQN, preventing concurrent callers from reusing the same sequence number.
+//
+// 3GPP: TS 33.501 §6.1.3.4 — SQN management (replay protection)
+func (s *Service) updateSQNOptimistic(ctx context.Context, supi, oldSQN, newSQN string) error {
 	row := s.db.QueryRow(ctx,
-		"UPDATE udm.authentication_data SET sqn = $1, updated_at = NOW() WHERE supi = $2 RETURNING supi",
-		newSQN, supi,
+		"UPDATE udm.authentication_data SET sqn = $1, updated_at = NOW() WHERE supi = $2 AND sqn = $3 RETURNING supi",
+		newSQN, supi, oldSQN,
 	)
 	var updated string
 	return row.Scan(&updated)

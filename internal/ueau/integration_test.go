@@ -30,13 +30,14 @@ import (
 
 const integrationDefaultDSN = "postgres://yugabyte:yugabyte@localhost:5433/yugabyte?sslmode=disable"
 
-// Test constants — standard Milenage test vectors.
+// Test constants — TS 35.207 Test Set 1 with pre-computed OPc.
+// K and OP are from TS 35.207 §4.1; OPc is derived via ComputeOPc(K, OP).
 const (
 	testSUPI           = "imsi-001010000000100"
 	testServingNetwork = "5G:mnc001.mcc001.3gppnetwork.org"
 	testNfInstanceID   = "nf-integration-001"
 	testKHex           = "000102030405060708090a0b0c0d0e0f"
-	testOPcHex         = "cdc202d5123e20f62b6d676ac72cb318"
+	testOPcHex         = "cd63cb71954a9f4e48a5994e37a02baf"
 	testSQN            = "000000000001"
 	testAMF            = "8000"
 )
