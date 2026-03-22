@@ -52,3 +52,16 @@ type MbsGroupMemb struct {
 	AfInstanceId            string          `json:"afInstanceId,omitempty"`
 	InternalGroupIdentifier string          `json:"internalGroupIdentifier,omitempty"`
 }
+
+// SdmSubscriptionInfo represents an SDM subscription that should be notified
+// of data changes. It is returned by GetSdmSubscriptionsForNotify so that the
+// PP service can identify which SDM subscribers to notify after provisioned
+// parameter updates.
+//
+// Based on: docs/sequence-diagrams.md §8 (Subscription Data Update Notification)
+// 3GPP: TS 29.503 Nudm_SDM — SdmSubscription (callback reference and URIs)
+type SdmSubscriptionInfo struct {
+	SubscriptionID        string   `json:"subscriptionId"`
+	CallbackReference     string   `json:"callbackReference"`
+	MonitoredResourceURIs []string `json:"monitoredResourceUris"`
+}

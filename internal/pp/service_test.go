@@ -804,3 +804,170 @@ func TestDeleteMbsGroupMembership_NotFound(t *testing.T) {
 	}
 	assertProblemStatus(t, err, http.StatusNotFound)
 }
+
+// ---------------------------------------------------------------------------
+// mockRows for multi-row queries
+// ---------------------------------------------------------------------------
+
+// mockRows implements pgx.Rows for unit tests.
+type mockRows struct {
+	scanFn func(dest ...any) error
+	data   [][]any
+	idx    int
+	errVal error
+}
+
+func (r *mockRows) Next() bool {
+	if r.idx < len(r.data) {
+		r.idx++
+		return true
+	}
+	return false
+}
+
+func (r *mockRows) Scan(dest ...any) error {
+	if r.scanFn != nil {
+		return r.scanFn(dest...)
+	}
+	row := r.data[r.idx-1]
+	for i, d := range dest {
+		if i >= len(row) {
+			break
+		}
+		switch p := d.(type) {
+		case *string:
+			if v, ok := row[i].(string); ok {
+				*p = v
+			}
+		case *[]string:
+			if v, ok := row[i].([]string); ok {
+				*p = v
+			}
+		}
+	}
+	return nil
+}
+
+func (r *mockRows) Close()                                       {}
+func (r *mockRows) Err() error                                   { return r.errVal }
+func (r *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
+func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
+func (r *mockRows) RawValues() [][]byte                          { return nil }
+func (r *mockRows) Values() ([]any, error)                       { return nil, nil }
+func (r *mockRows) Conn() *pgx.Conn                              { return nil }
+
+// ---------------------------------------------------------------------------
+// GetSdmSubscriptionsForNotify tests
+// ---------------------------------------------------------------------------
+
+func TestGetSdmSubscriptionsForNotify_Success(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data: [][]any{
+					{"sdm-sub-001", "https://amf.example.com/sdm-cb", []string{"/nudm-sdm/v2/imsi-001010000000001/am-data"}},
+					{"sdm-sub-002", "https://smf.example.com/sdm-cb", []string{"/nudm-sdm/v2/imsi-001010000000001/sm-data"}},
+				},
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	subs, err := svc.GetSdmSubscriptionsForNotify(context.Background(), testSUPI)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(subs) != 2 {
+		t.Fatalf("expected 2 subscriptions, got %d", len(subs))
+	}
+	if subs[0].SubscriptionID != "sdm-sub-001" {
+		t.Errorf("expected sdm-sub-001, got %s", subs[0].SubscriptionID)
+	}
+	if subs[0].CallbackReference != "https://amf.example.com/sdm-cb" {
+		t.Errorf("expected amf callback, got %s", subs[0].CallbackReference)
+	}
+	if len(subs[0].MonitoredResourceURIs) != 1 {
+		t.Errorf("expected 1 monitored URI, got %d", len(subs[0].MonitoredResourceURIs))
+	}
+	if subs[1].SubscriptionID != "sdm-sub-002" {
+		t.Errorf("expected sdm-sub-002, got %s", subs[1].SubscriptionID)
+	}
+}
+
+func TestGetSdmSubscriptionsForNotify_EmptyResult(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{data: [][]any{}}, nil
+		},
+	}
+	svc := NewService(db)
+
+	subs, err := svc.GetSdmSubscriptionsForNotify(context.Background(), testSUPI)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(subs) != 0 {
+		t.Errorf("expected 0 subscriptions, got %d", len(subs))
+	}
+}
+
+func TestGetSdmSubscriptionsForNotify_InvalidSUPI(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, err := svc.GetSdmSubscriptionsForNotify(context.Background(), "bad-supi")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestGetSdmSubscriptionsForNotify_QueryError(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return nil, fmt.Errorf("connection refused")
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetSdmSubscriptionsForNotify(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+func TestGetSdmSubscriptionsForNotify_ScanError(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data:   [][]any{{"sdm-sub-001", "https://amf.example.com/cb", []string{"/am-data"}}},
+				scanFn: func(_ ...any) error { return fmt.Errorf("scan failure") },
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetSdmSubscriptionsForNotify(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+func TestGetSdmSubscriptionsForNotify_RowsErr(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data:   [][]any{},
+				errVal: fmt.Errorf("stream error"),
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetSdmSubscriptionsForNotify(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}

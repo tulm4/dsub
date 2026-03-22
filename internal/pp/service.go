@@ -600,3 +600,43 @@ func (s *Service) DeleteMbsGroupMembership(ctx context.Context, extGroupID strin
 	}
 	return nil
 }
+
+// GetSdmSubscriptionsForNotify returns SDM subscriptions that should be notified
+// when subscriber data changes for the given SUPI. This queries the
+// udm.sdm_subscriptions table so that the PP service can dispatch
+// modification-notification callbacks after provisioned parameter updates.
+//
+// Based on: docs/sequence-diagrams.md §8 (Subscription Data Update Notification)
+// 3GPP: TS 29.503 Nudm_SDM — SDM Subscription / Notification
+func (s *Service) GetSdmSubscriptionsForNotify(ctx context.Context, supi string) ([]SdmSubscriptionInfo, error) {
+	if err := validateSUPI(supi); err != nil {
+		return nil, errors.NewBadRequest(
+			fmt.Sprintf("pp: invalid SUPI: %s", err),
+			errors.CauseMandatoryIEIncorrect,
+		)
+	}
+
+	rows, err := s.db.Query(ctx,
+		`SELECT subscription_id, callback_reference, monitored_resource_uris
+		 FROM udm.sdm_subscriptions
+		 WHERE supi = $1`,
+		supi,
+	)
+	if err != nil {
+		return nil, errors.NewInternalError(fmt.Sprintf("pp: query SDM subscriptions: %s", err))
+	}
+	defer rows.Close()
+
+	var subs []SdmSubscriptionInfo
+	for rows.Next() {
+		var sub SdmSubscriptionInfo
+		if err := rows.Scan(&sub.SubscriptionID, &sub.CallbackReference, &sub.MonitoredResourceURIs); err != nil {
+			return nil, errors.NewInternalError(fmt.Sprintf("pp: scan SDM subscription: %s", err))
+		}
+		subs = append(subs, sub)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.NewInternalError(fmt.Sprintf("pp: iterate SDM subscriptions: %s", err))
+	}
+	return subs, nil
+}
