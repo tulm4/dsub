@@ -211,12 +211,14 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 3 |
 | **Name** | Core High-Traffic Services |
-| **Status** | IN_PROGRESS |
-| **Progress** | 85% |
+| **Status** | DONE |
+| **Progress** | 100% |
 | **Last Updated** | 2026-03-22 |
 | **Owner** | — |
 
 **Description**: Implement the three high-traffic Nudm microservices that form the critical path for 5G UE registration, authentication, and session establishment. These services handle 80%+ of UDM traffic.
+
+**Completion Notes**: All three core services implemented with full endpoint routing, business logic, and database access layers. UEAU: Milenage f1–f5, 5G KDFs (XRES*, Kausf), 7 endpoints. SDM: 40 endpoints routed (core retrieval + subscriptions + identity translation). UECM: 34 endpoints routed (AMF/SMF/SMSF registration, deregistration, aggregation). Notify engine: circuit breaker, exponential backoff, batch delivery. Unit test coverage: ueau 94.3%, sdm 86.4%, uecm 91.5%, notify 98.7%. Integration tests: 16 tests against YugabyteDB covering CRUD operations for all three services. API conformance tests: 27 tests validating HTTP status codes, content types, and RFC 7807 ProblemDetails per TS 29.503.
 
 **Related Docs**:
 - `docs/service-decomposition.md` — §2.1 (UEAU), §2.2 (SDM), §2.3 (UECM)
@@ -242,8 +244,8 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - [x] **udm-uecm**: AMF/SMF/SMSF registration and deregistration, PEI updates, SMS routing, roaming info updates
 - [x] `internal/notify` — Callback engine with retry, circuit breaker, batch delivery, DLQ
 - [x] Unit tests (≥80% coverage per service)
-- [ ] Integration tests against YugabyteDB for all three services
-- [ ] API conformance tests validating against 3GPP OpenAPI YAML specs
+- [x] Integration tests against YugabyteDB for all three services
+- [x] API conformance tests validating against 3GPP OpenAPI YAML specs
 
 **Dependencies**: Phase 1, Phase 2
 
@@ -752,7 +754,7 @@ Phase 1 (Foundation)
 |-------|------|--------|----------|--------------|--------------|
 | 1 | Foundation & Shared Libraries | DONE | 100% | 2026-03-21 | None |
 | 2 | Database Schema & Data Model | DONE | 100% | 2026-03-21 | Phase 1 |
-| 3 | Core High-Traffic Services (UEAU, SDM, UECM) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2 |
+| 3 | Core High-Traffic Services (UEAU, SDM, UECM) | DONE | 100% | 2026-03-22 | Phase 1, 2 |
 | 4 | SUCI De-concealment & NRF Integration | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3 |
 | 5 | Medium-Traffic Services (EE, PP, MT) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 3 |
 | 6 | Low-Traffic Services (SSAU, NIDDAU, RSDS) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 5 |

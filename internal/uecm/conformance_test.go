@@ -22,7 +22,7 @@ import (
 func TestConformance_Register3GppAccess_Created_Returns201(t *testing.T) {
 	svc := &mockService{
 		register3GppAccessFn: func(_ context.Context, _ string, reg *Amf3GppAccessRegistration) (*Amf3GppAccessRegistration, bool, error) {
-			return reg, true, nil // true = created
+			return reg, true, nil
 		},
 	}
 	mux := newTestMux(svc)
@@ -51,7 +51,7 @@ func TestConformance_Register3GppAccess_Created_Returns201(t *testing.T) {
 func TestConformance_Register3GppAccess_Updated_Returns200(t *testing.T) {
 	svc := &mockService{
 		register3GppAccessFn: func(_ context.Context, _ string, reg *Amf3GppAccessRegistration) (*Amf3GppAccessRegistration, bool, error) {
-			return reg, false, nil // false = updated
+			return reg, false, nil
 		},
 	}
 	mux := newTestMux(svc)
@@ -162,7 +162,7 @@ func TestConformance_RegisterSmf_Created_Returns201(t *testing.T) {
 	svc := &mockService{
 		registerSmfFn: func(_ context.Context, _ string, pduSessionID int, reg *SmfRegistration) (*SmfRegistration, bool, error) {
 			reg.PduSessionID = pduSessionID
-			return reg, true, nil // true = created
+			return reg, true, nil
 		},
 	}
 	mux := newTestMux(svc)
