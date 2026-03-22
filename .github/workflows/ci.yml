@@ -94,25 +94,19 @@ jobs:
     timeout-minutes: 20
     if: github.event_name == 'push' || github.event_name == 'schedule'
 
-    services:
-      yugabytedb:
-        image: yugabytedb/yugabyte:2024.2.4.2-b2
-        env:
-          YSQL_USER: yugabyte
-          YSQL_PASSWORD: yugabyte
-          YSQL_DB: yugabyte
-        ports:
-          - 5433:5433   # YSQL (PostgreSQL-compatible)
-          - 7000:7000   # Master web UI
-          - 9000:9000   # TServer web UI
-        options: >-
-          --health-cmd "postgres/bin/pg_isready -h localhost -p 5433 -U yugabyte"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
-          --health-start-period 30s
-
     steps:
+      - name: Start YugabyteDB
+        run: |
+          docker run -d --name yugabytedb \
+            -p 5433:5433 \
+            -p 7000:7000 \
+            -p 9000:9000 \
+            -e YSQL_USER=yugabyte \
+            -e YSQL_PASSWORD=yugabyte \
+            -e YSQL_DB=yugabyte \
+            yugabytedb/yugabyte:2024.2.4.2-b2 \
+            bin/yugabyted start --daemon=false
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -145,3 +139,7 @@ jobs:
             -count=1 \
             -timeout 5m \
             -v
+
+      - name: Stop YugabyteDB
+        if: always()
+        run: docker rm -f yugabytedb || true
