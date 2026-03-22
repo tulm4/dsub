@@ -33,6 +33,8 @@ type ServiceInterface interface {
 	GetMbsGroupMembership(ctx context.Context, extGroupID string) (*MbsGroupMemb, error)
 	ModifyMbsGroupMembership(ctx context.Context, extGroupID string, patch *MbsGroupMemb) (*MbsGroupMemb, error)
 	DeleteMbsGroupMembership(ctx context.Context, extGroupID string) error
+
+	GetSdmSubscriptionsForNotify(ctx context.Context, supi string) ([]SdmSubscriptionInfo, error)
 }
 
 // Handler handles HTTP requests for the Nudm_PP API.

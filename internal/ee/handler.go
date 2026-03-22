@@ -24,6 +24,7 @@ type ServiceInterface interface {
 	CreateSubscription(ctx context.Context, ueIdentity string, sub *EeSubscription) (*CreatedEeSubscription, error)
 	UpdateSubscription(ctx context.Context, ueIdentity, subscriptionID string, patch *PatchEeSubscription) (*EeSubscription, error)
 	DeleteSubscription(ctx context.Context, ueIdentity, subscriptionID string) error
+	GetMatchingSubscriptions(ctx context.Context, supi string) ([]EeEventReport, error)
 }
 
 // Handler handles HTTP requests for the Nudm_EE API.

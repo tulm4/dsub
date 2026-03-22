@@ -49,3 +49,14 @@ type PatchEeSubscription struct {
 	ExpiryTime                 *string          `json:"expiryTime,omitempty"`
 	ImmediateReportData        *json.RawMessage `json:"immediateReportData,omitempty"`
 }
+
+// EeEventReport represents a report to be sent to a matching EE subscriber.
+// It is returned by GetMatchingSubscriptions so that other services (e.g. UECM)
+// can dispatch event notifications to the appropriate callback URIs.
+//
+// 3GPP: TS 29.503 Nudm_EE — MonitoringReport
+type EeEventReport struct {
+	SubscriptionID    string          `json:"subscriptionId"`
+	CallbackReference string          `json:"callbackReference"`
+	MonitoringReport  json.RawMessage `json:"monitoringReport,omitempty"`
+}

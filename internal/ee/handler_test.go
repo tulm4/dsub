@@ -44,6 +44,10 @@ func (m *mockService) DeleteSubscription(ctx context.Context, ueIdentity, subscr
 	return errors.NewNotImplemented("not implemented")
 }
 
+func (m *mockService) GetMatchingSubscriptions(_ context.Context, _ string) ([]EeEventReport, error) {
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
 // newTestMux creates an http.ServeMux wired to the given mock service.
 func newTestMux(svc *mockService) *http.ServeMux {
 	handler := NewHandler(svc)

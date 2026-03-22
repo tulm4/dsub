@@ -477,3 +477,167 @@ func TestDeleteSubscription_GroupID(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// mockRows for multi-row queries
+// ---------------------------------------------------------------------------
+
+// mockRows implements pgx.Rows for unit tests.
+type mockRows struct {
+	scanFn func(dest ...any) error
+	data   [][]any
+	idx    int
+	errVal error
+}
+
+func (r *mockRows) Next() bool {
+	if r.idx < len(r.data) {
+		r.idx++
+		return true
+	}
+	return false
+}
+
+func (r *mockRows) Scan(dest ...any) error {
+	if r.scanFn != nil {
+		return r.scanFn(dest...)
+	}
+	row := r.data[r.idx-1]
+	for i, d := range dest {
+		if i >= len(row) {
+			break
+		}
+		switch p := d.(type) {
+		case *string:
+			if v, ok := row[i].(string); ok {
+				*p = v
+			}
+		case *json.RawMessage:
+			if v, ok := row[i].(json.RawMessage); ok {
+				*p = v
+			}
+		}
+	}
+	return nil
+}
+
+func (r *mockRows) Close()                                       {}
+func (r *mockRows) Err() error                                   { return r.errVal }
+func (r *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
+func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
+func (r *mockRows) RawValues() [][]byte                          { return nil }
+func (r *mockRows) Values() ([]any, error)                       { return nil, nil }
+func (r *mockRows) Conn() *pgx.Conn                              { return nil }
+
+// ---------------------------------------------------------------------------
+// GetMatchingSubscriptions tests
+// ---------------------------------------------------------------------------
+
+func TestGetMatchingSubscriptions_Success(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data: [][]any{
+					{"sub-001", "https://nef.example.com/cb1", json.RawMessage(`{"cfg1":{}}`)},
+					{"sub-002", "https://nef.example.com/cb2", json.RawMessage(`{"cfg2":{}}`)},
+				},
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	reports, err := svc.GetMatchingSubscriptions(context.Background(), testSUPI)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(reports) != 2 {
+		t.Fatalf("expected 2 reports, got %d", len(reports))
+	}
+	if reports[0].SubscriptionID != "sub-001" {
+		t.Errorf("expected sub-001, got %s", reports[0].SubscriptionID)
+	}
+	if reports[0].CallbackReference != "https://nef.example.com/cb1" {
+		t.Errorf("expected callback cb1, got %s", reports[0].CallbackReference)
+	}
+	if reports[1].SubscriptionID != "sub-002" {
+		t.Errorf("expected sub-002, got %s", reports[1].SubscriptionID)
+	}
+}
+
+func TestGetMatchingSubscriptions_EmptyResult(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{data: [][]any{}}, nil
+		},
+	}
+	svc := NewService(db)
+
+	reports, err := svc.GetMatchingSubscriptions(context.Background(), testSUPI)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(reports) != 0 {
+		t.Errorf("expected 0 reports, got %d", len(reports))
+	}
+}
+
+func TestGetMatchingSubscriptions_InvalidSUPI(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, err := svc.GetMatchingSubscriptions(context.Background(), "bad-supi")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestGetMatchingSubscriptions_QueryError(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return nil, fmt.Errorf("connection refused")
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetMatchingSubscriptions(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+func TestGetMatchingSubscriptions_ScanError(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data:   [][]any{{"sub-001", "https://nef.example.com/cb1", json.RawMessage(`{}`)}},
+				scanFn: func(_ ...any) error { return fmt.Errorf("scan failure") },
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetMatchingSubscriptions(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+func TestGetMatchingSubscriptions_RowsErr(t *testing.T) {
+	db := &mockDB{
+		queryFn: func(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+			return &mockRows{
+				data:   [][]any{},
+				errVal: fmt.Errorf("stream error"),
+			}, nil
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetMatchingSubscriptions(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}

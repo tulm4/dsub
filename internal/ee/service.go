@@ -221,3 +221,42 @@ func (s *Service) DeleteSubscription(ctx context.Context, ueIdentity, subscripti
 
 	return nil
 }
+
+// GetMatchingSubscriptions returns all EE subscriptions that match a given SUPI
+// and should receive event notifications. This is called by other services
+// (e.g., UECM) when events occur that need to be reported to EE subscribers.
+//
+// Based on: docs/sequence-diagrams.md §10 (Event Exposure)
+// 3GPP: TS 29.503 Nudm_EE — Event notification
+func (s *Service) GetMatchingSubscriptions(ctx context.Context, supi string) ([]EeEventReport, error) {
+	if err := identifiers.ValidateSUPI(supi); err != nil {
+		return nil, errors.NewBadRequest(
+			fmt.Sprintf("ee: invalid SUPI: %s", err),
+			errors.CauseMandatoryIEIncorrect,
+		)
+	}
+
+	rows, err := s.db.Query(ctx,
+		`SELECT subscription_id, callback_reference, monitoring_configurations
+		 FROM udm.ee_subscriptions
+		 WHERE supi = $1`,
+		supi,
+	)
+	if err != nil {
+		return nil, errors.NewInternalError(fmt.Sprintf("ee: query matching subscriptions: %s", err))
+	}
+	defer rows.Close()
+
+	var reports []EeEventReport
+	for rows.Next() {
+		var r EeEventReport
+		if err := rows.Scan(&r.SubscriptionID, &r.CallbackReference, &r.MonitoringReport); err != nil {
+			return nil, errors.NewInternalError(fmt.Sprintf("ee: scan subscription: %s", err))
+		}
+		reports = append(reports, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, errors.NewInternalError(fmt.Sprintf("ee: iterate subscriptions: %s", err))
+	}
+	return reports, nil
+}

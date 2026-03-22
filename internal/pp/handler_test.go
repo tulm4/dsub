@@ -100,6 +100,10 @@ func (m *mockService) DeleteMbsGroupMembership(ctx context.Context, extGroupID s
 	return errors.NewNotImplemented("not implemented")
 }
 
+func (m *mockService) GetSdmSubscriptionsForNotify(_ context.Context, _ string) ([]SdmSubscriptionInfo, error) {
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
 // newTestMux creates an http.ServeMux wired to the given mock service.
 func newTestMux(svc *mockService) *http.ServeMux {
 	handler := NewHandler(svc)
