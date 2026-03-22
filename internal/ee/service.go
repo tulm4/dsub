@@ -59,7 +59,17 @@ func validateUeID(ueID string) error {
 	return fmt.Errorf("invalid identifier format: must be SUPI (imsi-), GPSI (msisdn-/extid-), or group ID (group-): %s", ueID)
 }
 
+// allowedColumns is the allowlist of column names that can appear in
+// dynamically constructed WHERE clauses.  Only these three values are
+// returned by identityColumns.
+var allowedColumns = map[string]bool{
+	"supi":        true,
+	"gpsi":        true,
+	"ue_group_id": true,
+}
+
 // identityColumns returns the column name and value to use for the given ueIdentity.
+// The returned column is always one of "supi", "gpsi", or "ue_group_id".
 func identityColumns(ueID string) (string, string) {
 	if identifiers.IsSUPI(ueID) {
 		return "supi", ueID
@@ -68,6 +78,15 @@ func identityColumns(ueID string) (string, string) {
 		return "gpsi", ueID
 	}
 	return "ue_group_id", ueID
+}
+
+// safeColumn validates that col is in the allowedColumns allowlist and panics
+// if it is not. This prevents SQL injection via dynamic column names.
+func safeColumn(col string) string {
+	if !allowedColumns[col] {
+		panic(fmt.Sprintf("ee: unexpected column name: %q", col))
+	}
+	return col
 }
 
 // CreateSubscription creates a new event exposure subscription.
@@ -93,6 +112,7 @@ func (s *Service) CreateSubscription(ctx context.Context, ueIdentity string, sub
 
 	col, val := identityColumns(ueIdentity)
 
+	// json.RawMessage is a []byte alias — json.Marshal cannot fail for it.
 	monCfgBytes, _ := json.Marshal(sub.MonitoringConfigurations)
 	repOptBytes, _ := json.Marshal(sub.ReportingOptions)
 
@@ -101,7 +121,7 @@ func (s *Service) CreateSubscription(ctx context.Context, ueIdentity string, sub
 		fmt.Sprintf(
 			`INSERT INTO udm.ee_subscriptions (%s, callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, data_restoration_callback_uri, excluded_unsubscribed_ues, expiry_time)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		 RETURNING subscription_id`, col),
+		 RETURNING subscription_id`, safeColumn(col)),
 		val, sub.CallbackReference, monCfgBytes, repOptBytes,
 		sub.SupportedFeatures, sub.ScefID, sub.NfInstanceID,
 		sub.DataRestorationCallbackURI, sub.ExcludedUnsubscribedUes, sub.ExpiryTime,
@@ -143,7 +163,7 @@ func (s *Service) UpdateSubscription(ctx context.Context, ueIdentity, subscripti
 		     supported_features = COALESCE($4, supported_features),
 		     expiry_time = COALESCE($5, expiry_time)
 		 WHERE subscription_id = $6 AND %s = $7
-		 RETURNING callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, expiry_time`, col),
+		 RETURNING callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, expiry_time`, safeColumn(col)),
 		patch.CallbackReference,
 		patch.MonitoringConfigurations,
 		patch.ReportingOptions,
@@ -186,7 +206,7 @@ func (s *Service) DeleteSubscription(ctx context.Context, ueIdentity, subscripti
 	col, val := identityColumns(ueIdentity)
 
 	tag, err := s.db.Exec(ctx,
-		fmt.Sprintf(`DELETE FROM udm.ee_subscriptions WHERE subscription_id = $1 AND %s = $2`, col),
+		fmt.Sprintf(`DELETE FROM udm.ee_subscriptions WHERE subscription_id = $1 AND %s = $2`, safeColumn(col)),
 		subscriptionID, val,
 	)
 	if err != nil {

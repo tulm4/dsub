@@ -96,6 +96,16 @@ func (s *Service) GetPPData(ctx context.Context, ueID string) (*PpData, error) {
 	return &data, nil
 }
 
+// marshalNullableJSON returns the JSON encoding of raw, or nil if raw is nil.
+// json.RawMessage is a []byte alias so json.Marshal cannot fail for it.
+func marshalNullableJSON(raw json.RawMessage) []byte {
+	if raw == nil {
+		return nil
+	}
+	b, _ := json.Marshal(raw)
+	return b
+}
+
 // UpdatePPData creates or updates provisioned parameter data for a subscriber.
 //
 // Based on: docs/sbi-api-design.md §3.5 (PATCH /{ueId}/pp-data)
@@ -111,38 +121,14 @@ func (s *Service) UpdatePPData(ctx context.Context, ueID string, patch *PpData) 
 		return nil, errors.NewBadRequest("pp: missing request body", errors.CauseMandatoryIEMissing)
 	}
 
-	commCharBytes, _ := json.Marshal(patch.CommunicationCharacteristics)
-	if patch.CommunicationCharacteristics == nil {
-		commCharBytes = nil
-	}
-	expectedUeBytes, _ := json.Marshal(patch.ExpectedUeBehaviour)
-	if patch.ExpectedUeBehaviour == nil {
-		expectedUeBytes = nil
-	}
-	ecRestrictionBytes, _ := json.Marshal(patch.EcRestriction)
-	if patch.EcRestriction == nil {
-		ecRestrictionBytes = nil
-	}
-	acsInfoBytes, _ := json.Marshal(patch.AcsInfo)
-	if patch.AcsInfo == nil {
-		acsInfoBytes = nil
-	}
-	sorInfoBytes, _ := json.Marshal(patch.SorInfo)
-	if patch.SorInfo == nil {
-		sorInfoBytes = nil
-	}
-	fiveMbsBytes, _ := json.Marshal(patch.FiveMbsAuthorizationInfo)
-	if patch.FiveMbsAuthorizationInfo == nil {
-		fiveMbsBytes = nil
-	}
-	steeringBytes, _ := json.Marshal(patch.SteeringContainer)
-	if patch.SteeringContainer == nil {
-		steeringBytes = nil
-	}
-	ppDlCountExtBytes, _ := json.Marshal(patch.PpDlPacketCountExt)
-	if patch.PpDlPacketCountExt == nil {
-		ppDlCountExtBytes = nil
-	}
+	commCharBytes := marshalNullableJSON(patch.CommunicationCharacteristics)
+	expectedUeBytes := marshalNullableJSON(patch.ExpectedUeBehaviour)
+	ecRestrictionBytes := marshalNullableJSON(patch.EcRestriction)
+	acsInfoBytes := marshalNullableJSON(patch.AcsInfo)
+	sorInfoBytes := marshalNullableJSON(patch.SorInfo)
+	fiveMbsBytes := marshalNullableJSON(patch.FiveMbsAuthorizationInfo)
+	steeringBytes := marshalNullableJSON(patch.SteeringContainer)
+	ppDlCountExtBytes := marshalNullableJSON(patch.PpDlPacketCountExt)
 
 	var result PpData
 	row := s.db.QueryRow(ctx,
