@@ -1,6 +1,6 @@
 module github.com/tulm4/dsub
 
-go 1.24.13
+go 1.25.8
 
 require (
 	github.com/jackc/pgx/v5 v5.8.0
