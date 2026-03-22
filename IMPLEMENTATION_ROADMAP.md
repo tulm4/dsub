@@ -211,9 +211,9 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 3 |
 | **Name** | Core High-Traffic Services |
-| **Status** | NOT_STARTED |
-| **Progress** | 0% |
-| **Last Updated** | 2026-03-21 |
+| **Status** | IN_PROGRESS |
+| **Progress** | 85% |
+| **Last Updated** | 2026-03-22 |
 | **Owner** | — |
 
 **Description**: Implement the three high-traffic Nudm microservices that form the critical path for 5G UE registration, authentication, and session establishment. These services handle 80%+ of UDM traffic.
@@ -237,11 +237,11 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - `internal/notify/` — callback dispatch for SDM change notifications and UECM deregistration
 
 **Deliverables**:
-- [ ] **udm-ueau**: Auth vector generation (5G-AKA, EAP-AKA'), auth confirmation, SQN management, HSS interworking, GBA vectors
-- [ ] **udm-sdm**: All 38 data retrieval endpoints, SDM change subscriptions, shared data, identity translation (GPSI↔SUPI)
-- [ ] **udm-uecm**: AMF/SMF/SMSF registration and deregistration, PEI updates, SMS routing, roaming info updates
-- [ ] `internal/notify` — Callback engine with retry, circuit breaker, batch delivery, DLQ
-- [ ] Unit tests (≥80% coverage per service)
+- [x] **udm-ueau**: Auth vector generation (5G-AKA, EAP-AKA'), auth confirmation, SQN management, HSS interworking, GBA vectors
+- [x] **udm-sdm**: All 38 data retrieval endpoints, SDM change subscriptions, shared data, identity translation (GPSI↔SUPI)
+- [x] **udm-uecm**: AMF/SMF/SMSF registration and deregistration, PEI updates, SMS routing, roaming info updates
+- [x] `internal/notify` — Callback engine with retry, circuit breaker, batch delivery, DLQ
+- [x] Unit tests (≥80% coverage per service)
 - [ ] Integration tests against YugabyteDB for all three services
 - [ ] API conformance tests validating against 3GPP OpenAPI YAML specs
 
