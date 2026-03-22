@@ -18,8 +18,16 @@ import (
 
 // mockService implements ServiceInterface for handler tests.
 type mockService struct {
-	getPPDataFn    func(ctx context.Context, ueID string) (*PpData, error)
-	updatePPDataFn func(ctx context.Context, ueID string, patch *PpData) (*PpData, error)
+	getPPDataFn                func(ctx context.Context, ueID string) (*PpData, error)
+	updatePPDataFn             func(ctx context.Context, ueID string, patch *PpData) (*PpData, error)
+	create5GVnGroupFn          func(ctx context.Context, extGroupID string, cfg *VnGroupConfiguration) (*VnGroupConfiguration, bool, error)
+	get5GVnGroupFn             func(ctx context.Context, extGroupID string) (*VnGroupConfiguration, error)
+	modify5GVnGroupFn          func(ctx context.Context, extGroupID string, patch *VnGroupConfiguration) (*VnGroupConfiguration, error)
+	delete5GVnGroupFn          func(ctx context.Context, extGroupID string) error
+	createMbsGroupMembershipFn func(ctx context.Context, extGroupID string, memb *MbsGroupMemb) (*MbsGroupMemb, bool, error)
+	getMbsGroupMembershipFn    func(ctx context.Context, extGroupID string) (*MbsGroupMemb, error)
+	modifyMbsGroupMembershipFn func(ctx context.Context, extGroupID string, patch *MbsGroupMemb) (*MbsGroupMemb, error)
+	deleteMbsGroupMembershipFn func(ctx context.Context, extGroupID string) error
 }
 
 func (m *mockService) GetPPData(ctx context.Context, ueID string) (*PpData, error) {
@@ -34,6 +42,62 @@ func (m *mockService) UpdatePPData(ctx context.Context, ueID string, patch *PpDa
 		return m.updatePPDataFn(ctx, ueID, patch)
 	}
 	return nil, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) Create5GVnGroup(ctx context.Context, extGroupID string, cfg *VnGroupConfiguration) (*VnGroupConfiguration, bool, error) {
+	if m.create5GVnGroupFn != nil {
+		return m.create5GVnGroupFn(ctx, extGroupID, cfg)
+	}
+	return nil, false, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) Get5GVnGroup(ctx context.Context, extGroupID string) (*VnGroupConfiguration, error) {
+	if m.get5GVnGroupFn != nil {
+		return m.get5GVnGroupFn(ctx, extGroupID)
+	}
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) Modify5GVnGroup(ctx context.Context, extGroupID string, patch *VnGroupConfiguration) (*VnGroupConfiguration, error) {
+	if m.modify5GVnGroupFn != nil {
+		return m.modify5GVnGroupFn(ctx, extGroupID, patch)
+	}
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) Delete5GVnGroup(ctx context.Context, extGroupID string) error {
+	if m.delete5GVnGroupFn != nil {
+		return m.delete5GVnGroupFn(ctx, extGroupID)
+	}
+	return errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) CreateMbsGroupMembership(ctx context.Context, extGroupID string, memb *MbsGroupMemb) (*MbsGroupMemb, bool, error) {
+	if m.createMbsGroupMembershipFn != nil {
+		return m.createMbsGroupMembershipFn(ctx, extGroupID, memb)
+	}
+	return nil, false, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) GetMbsGroupMembership(ctx context.Context, extGroupID string) (*MbsGroupMemb, error) {
+	if m.getMbsGroupMembershipFn != nil {
+		return m.getMbsGroupMembershipFn(ctx, extGroupID)
+	}
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) ModifyMbsGroupMembership(ctx context.Context, extGroupID string, patch *MbsGroupMemb) (*MbsGroupMemb, error) {
+	if m.modifyMbsGroupMembershipFn != nil {
+		return m.modifyMbsGroupMembershipFn(ctx, extGroupID, patch)
+	}
+	return nil, errors.NewNotImplemented("not implemented")
+}
+
+func (m *mockService) DeleteMbsGroupMembership(ctx context.Context, extGroupID string) error {
+	if m.deleteMbsGroupMembershipFn != nil {
+		return m.deleteMbsGroupMembershipFn(ctx, extGroupID)
+	}
+	return errors.NewNotImplemented("not implemented")
 }
 
 // newTestMux creates an http.ServeMux wired to the given mock service.
@@ -223,36 +287,231 @@ func TestHandleUpdatePPData_ServiceError(t *testing.T) {
 	assertProblemDetailsContentType(t, w)
 }
 
-// --- Not Implemented Paths ---
+// --- 5G VN Group Handler Tests ---
 
-func TestHandle5gVnGroups_NotImplemented(t *testing.T) {
-	svc := &mockService{}
+func TestHandleCreate5GVnGroup_Success(t *testing.T) {
+	svc := &mockService{
+		create5GVnGroupFn: func(_ context.Context, extGroupID string, cfg *VnGroupConfiguration) (*VnGroupConfiguration, bool, error) {
+			if extGroupID != "group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return cfg, true, nil
+		},
+	}
 	mux := newTestMux(svc)
 
-	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-pp/v1/5g-vn-groups/group1/pp-data", http.NoBody)
+	body := `{"dnn":"internet","members":["msisdn-12025551234"]}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-pp/v1/5g-vn-groups/group-1",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var result VnGroupConfiguration
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Dnn != "internet" {
+		t.Errorf("expected dnn 'internet', got %s", result.Dnn)
+	}
+}
+
+func TestHandleGet5GVnGroup_Success(t *testing.T) {
+	svc := &mockService{
+		get5GVnGroupFn: func(_ context.Context, extGroupID string) (*VnGroupConfiguration, error) {
+			if extGroupID != "group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return &VnGroupConfiguration{
+				Dnn:     "internet",
+				Members: []string{"msisdn-12025551234"},
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-pp/v1/5g-vn-groups/group-1", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var result VnGroupConfiguration
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Dnn != "internet" {
+		t.Errorf("expected dnn 'internet', got %s", result.Dnn)
+	}
+}
+
+func TestHandleGet5GVnGroup_NotFound(t *testing.T) {
+	svc := &mockService{
+		get5GVnGroupFn: func(_ context.Context, _ string) (*VnGroupConfiguration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseDataNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-pp/v1/5g-vn-groups/group-1", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
 	}
 	assertProblemDetailsContentType(t, w)
 }
 
-func TestHandleMbsGroupMembership_NotImplemented(t *testing.T) {
-	svc := &mockService{}
+func TestHandleModify5GVnGroup_Success(t *testing.T) {
+	svc := &mockService{
+		modify5GVnGroupFn: func(_ context.Context, extGroupID string, patch *VnGroupConfiguration) (*VnGroupConfiguration, error) {
+			if extGroupID != "group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return &VnGroupConfiguration{
+				Dnn:     patch.Dnn,
+				Members: []string{"msisdn-12025551234"},
+			}, nil
+		},
+	}
 	mux := newTestMux(svc)
 
-	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-pp/v1/mbs-group-membership/group1", http.NoBody)
+	body := `{"dnn":"new-dnn"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-pp/v1/5g-vn-groups/group-1",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
 	}
-	assertProblemDetailsContentType(t, w)
+
+	var result VnGroupConfiguration
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Dnn != "new-dnn" {
+		t.Errorf("expected dnn 'new-dnn', got %s", result.Dnn)
+	}
+}
+
+func TestHandleDelete5GVnGroup_Success(t *testing.T) {
+	svc := &mockService{
+		delete5GVnGroupFn: func(_ context.Context, extGroupID string) error {
+			if extGroupID != "group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-pp/v1/5g-vn-groups/group-1", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// --- MBS Group Membership Handler Tests ---
+
+func TestHandleCreateMbsGroupMembership_Success(t *testing.T) {
+	svc := &mockService{
+		createMbsGroupMembershipFn: func(_ context.Context, extGroupID string, memb *MbsGroupMemb) (*MbsGroupMemb, bool, error) {
+			if extGroupID != "mbs-group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return memb, true, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"afInstanceId":"af-1"}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-pp/v1/mbs-group-membership/mbs-group-1",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var result MbsGroupMemb
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AfInstanceId != "af-1" {
+		t.Errorf("expected afInstanceId 'af-1', got %s", result.AfInstanceId)
+	}
+}
+
+func TestHandleGetMbsGroupMembership_Success(t *testing.T) {
+	svc := &mockService{
+		getMbsGroupMembershipFn: func(_ context.Context, extGroupID string) (*MbsGroupMemb, error) {
+			if extGroupID != "mbs-group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return &MbsGroupMemb{
+				AfInstanceId: "af-1",
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-pp/v1/mbs-group-membership/mbs-group-1", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var result MbsGroupMemb
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AfInstanceId != "af-1" {
+		t.Errorf("expected afInstanceId 'af-1', got %s", result.AfInstanceId)
+	}
+}
+
+func TestHandleDeleteMbsGroupMembership_Success(t *testing.T) {
+	svc := &mockService{
+		deleteMbsGroupMembershipFn: func(_ context.Context, extGroupID string) error {
+			if extGroupID != "mbs-group-1" {
+				t.Errorf("unexpected extGroupID: %s", extGroupID)
+			}
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-pp/v1/mbs-group-membership/mbs-group-1", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
 }
 
 // --- Endpoint Not Found ---

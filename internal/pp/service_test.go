@@ -313,3 +313,494 @@ func TestUpdatePPData_DBError(t *testing.T) {
 	}
 	assertProblemStatus(t, err, http.StatusInternalServerError)
 }
+
+// ---------------------------------------------------------------------------
+// Scan helpers for VN Group / MBS tests
+// ---------------------------------------------------------------------------
+
+// scanBool safely assigns a bool to a scan destination.
+func scanBool(dest any, val bool) {
+	if p, ok := dest.(*bool); ok {
+		*p = val
+	}
+}
+
+// scanBytes safely assigns a []byte to a scan destination.
+func scanBytes(dest any, val []byte) {
+	if p, ok := dest.(*[]byte); ok {
+		*p = val
+	}
+}
+
+// ---------------------------------------------------------------------------
+// validateExtGroupID tests
+// ---------------------------------------------------------------------------
+
+func TestValidateExtGroupID(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{name: "valid group id", input: "ext-group-1", wantErr: false},
+		{name: "empty string", input: "", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateExtGroupID(tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("validateExtGroupID(%q): got err=%v, wantErr=%v", tc.input, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Create5GVnGroup tests
+// ---------------------------------------------------------------------------
+
+func TestCreate5GVnGroup_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanBool(dest[0], true)
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	cfg := &VnGroupConfiguration{
+		Dnn:     "internet",
+		Members: []string{"msisdn-12025551234"},
+	}
+	result, created, err := svc.Create5GVnGroup(context.Background(), "ext-group-1", cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !created {
+		t.Error("expected created=true")
+	}
+	if result.Dnn != "internet" {
+		t.Errorf("expected dnn 'internet', got %s", result.Dnn)
+	}
+	if len(result.Members) != 1 || result.Members[0] != "msisdn-12025551234" {
+		t.Errorf("unexpected members: %v", result.Members)
+	}
+}
+
+func TestCreate5GVnGroup_EmptyExtGroupID(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, _, err := svc.Create5GVnGroup(context.Background(), "", &VnGroupConfiguration{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestCreate5GVnGroup_NilBody(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, _, err := svc.Create5GVnGroup(context.Background(), "ext-group-1", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestCreate5GVnGroup_DBError(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return fmt.Errorf("connection refused")
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, _, err := svc.Create5GVnGroup(context.Background(), "ext-group-1", &VnGroupConfiguration{Dnn: "internet"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+// ---------------------------------------------------------------------------
+// Get5GVnGroup tests
+// ---------------------------------------------------------------------------
+
+func TestGet5GVnGroup_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanString(dest[0], "internet")                              // dnn
+				scanJSON(dest[1], json.RawMessage(`{"sst":1}`))              // s_nssai
+				scanBytes(dest[2], []byte(`["IPV4"]`))                       // pdu_session_types
+				// dest[3]: app_descriptors — nil
+				scanBool(dest[4], true)                                      // secondary_auth
+				// dest[5]: dn_aaa_address — nil
+				scanString(dest[6], "aaa.example.com")                       // dn_aaa_fqdn
+				scanBytes(dest[7], []byte(`["msisdn-12025551234"]`))         // members
+				scanString(dest[8], "ref-1")                                 // reference_id
+				scanString(dest[9], "af-1")                                  // af_instance_id
+				scanString(dest[10], "int-group-1")                          // internal_group_identifier
+				// dest[11]: mtc_provider_information — nil
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	result, err := svc.Get5GVnGroup(context.Background(), "ext-group-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Dnn != "internet" {
+		t.Errorf("expected dnn 'internet', got %s", result.Dnn)
+	}
+	if string(result.SNssai) != `{"sst":1}` {
+		t.Errorf("unexpected sNssai: %s", string(result.SNssai))
+	}
+	if len(result.PduSessionTypes) != 1 || result.PduSessionTypes[0] != "IPV4" {
+		t.Errorf("unexpected pduSessionTypes: %v", result.PduSessionTypes)
+	}
+	if !result.SecondaryAuth {
+		t.Error("expected secondaryAuth=true")
+	}
+	if len(result.Members) != 1 || result.Members[0] != "msisdn-12025551234" {
+		t.Errorf("unexpected members: %v", result.Members)
+	}
+	if result.ReferenceId != "ref-1" {
+		t.Errorf("expected referenceId 'ref-1', got %s", result.ReferenceId)
+	}
+}
+
+func TestGet5GVnGroup_NotFound(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return pgx.ErrNoRows
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.Get5GVnGroup(context.Background(), "ext-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
+
+func TestGet5GVnGroup_DBError(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return fmt.Errorf("connection refused")
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.Get5GVnGroup(context.Background(), "ext-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+// ---------------------------------------------------------------------------
+// Modify5GVnGroup tests
+// ---------------------------------------------------------------------------
+
+func TestModify5GVnGroup_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanString(dest[0], "new-dnn")
+				scanJSON(dest[1], json.RawMessage(`{"sst":1}`))
+				scanBytes(dest[2], []byte(`["IPV4"]`))
+				// dest[3]: app_descriptors — nil
+				scanBool(dest[4], false)
+				// dest[5]: dn_aaa_address — nil
+				scanString(dest[6], "aaa.example.com")
+				scanBytes(dest[7], []byte(`["msisdn-12025551234"]`))
+				scanString(dest[8], "ref-1")
+				scanString(dest[9], "af-1")
+				scanString(dest[10], "int-group-1")
+				// dest[11]: mtc_provider_information — nil
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	patch := &VnGroupConfiguration{Dnn: "new-dnn"}
+	result, err := svc.Modify5GVnGroup(context.Background(), "ext-group-1", patch)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Dnn != "new-dnn" {
+		t.Errorf("expected dnn 'new-dnn', got %s", result.Dnn)
+	}
+}
+
+func TestModify5GVnGroup_NotFound(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return pgx.ErrNoRows
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.Modify5GVnGroup(context.Background(), "ext-group-1", &VnGroupConfiguration{Dnn: "x"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
+
+// ---------------------------------------------------------------------------
+// Delete5GVnGroup tests
+// ---------------------------------------------------------------------------
+
+func TestDelete5GVnGroup_Success(t *testing.T) {
+	db := &mockDB{
+		execFn: func(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+			return pgconn.NewCommandTag("DELETE 1"), nil
+		},
+	}
+	svc := NewService(db)
+
+	err := svc.Delete5GVnGroup(context.Background(), "ext-group-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDelete5GVnGroup_NotFound(t *testing.T) {
+	db := &mockDB{
+		execFn: func(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+			return pgconn.NewCommandTag("DELETE 0"), nil
+		},
+	}
+	svc := NewService(db)
+
+	err := svc.Delete5GVnGroup(context.Background(), "ext-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
+
+// ---------------------------------------------------------------------------
+// CreateMbsGroupMembership tests
+// ---------------------------------------------------------------------------
+
+func TestCreateMbsGroupMembership_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanBool(dest[0], true)
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	memb := &MbsGroupMemb{
+		AfInstanceId:            "af-1",
+		InternalGroupIdentifier: "int-group-1",
+	}
+	result, created, err := svc.CreateMbsGroupMembership(context.Background(), "mbs-group-1", memb)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !created {
+		t.Error("expected created=true")
+	}
+	if result.AfInstanceId != "af-1" {
+		t.Errorf("expected afInstanceId 'af-1', got %s", result.AfInstanceId)
+	}
+}
+
+func TestCreateMbsGroupMembership_EmptyExtGroupID(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, _, err := svc.CreateMbsGroupMembership(context.Background(), "", &MbsGroupMemb{})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestCreateMbsGroupMembership_NilBody(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	_, _, err := svc.CreateMbsGroupMembership(context.Background(), "mbs-group-1", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestCreateMbsGroupMembership_DBError(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return fmt.Errorf("connection refused")
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, _, err := svc.CreateMbsGroupMembership(context.Background(), "mbs-group-1", &MbsGroupMemb{AfInstanceId: "af-1"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+// ---------------------------------------------------------------------------
+// GetMbsGroupMembership tests
+// ---------------------------------------------------------------------------
+
+func TestGetMbsGroupMembership_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanJSON(dest[0], json.RawMessage(`{"tmgi":"010203"}`)) // multicast_group_memb
+				scanString(dest[1], "af-1")                             // af_instance_id
+				scanString(dest[2], "int-group-1")                      // internal_group_identifier
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	result, err := svc.GetMbsGroupMembership(context.Background(), "mbs-group-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.AfInstanceId != "af-1" {
+		t.Errorf("expected afInstanceId 'af-1', got %s", result.AfInstanceId)
+	}
+	if string(result.MulticastGroupMemb) != `{"tmgi":"010203"}` {
+		t.Errorf("unexpected multicastGroupMemb: %s", string(result.MulticastGroupMemb))
+	}
+}
+
+func TestGetMbsGroupMembership_NotFound(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return pgx.ErrNoRows
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetMbsGroupMembership(context.Background(), "mbs-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
+
+func TestGetMbsGroupMembership_DBError(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return fmt.Errorf("connection refused")
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.GetMbsGroupMembership(context.Background(), "mbs-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusInternalServerError)
+}
+
+// ---------------------------------------------------------------------------
+// ModifyMbsGroupMembership tests
+// ---------------------------------------------------------------------------
+
+func TestModifyMbsGroupMembership_Success(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(dest ...any) error {
+				scanJSON(dest[0], json.RawMessage(`{"tmgi":"999999"}`))
+				scanString(dest[1], "af-2")
+				scanString(dest[2], "int-group-1")
+				return nil
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	patch := &MbsGroupMemb{AfInstanceId: "af-2"}
+	result, err := svc.ModifyMbsGroupMembership(context.Background(), "mbs-group-1", patch)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.AfInstanceId != "af-2" {
+		t.Errorf("expected afInstanceId 'af-2', got %s", result.AfInstanceId)
+	}
+}
+
+func TestModifyMbsGroupMembership_NotFound(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return pgx.ErrNoRows
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.ModifyMbsGroupMembership(context.Background(), "mbs-group-1", &MbsGroupMemb{AfInstanceId: "af-2"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
+
+// ---------------------------------------------------------------------------
+// DeleteMbsGroupMembership tests
+// ---------------------------------------------------------------------------
+
+func TestDeleteMbsGroupMembership_Success(t *testing.T) {
+	db := &mockDB{
+		execFn: func(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+			return pgconn.NewCommandTag("DELETE 1"), nil
+		},
+	}
+	svc := NewService(db)
+
+	err := svc.DeleteMbsGroupMembership(context.Background(), "mbs-group-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteMbsGroupMembership_NotFound(t *testing.T) {
+	db := &mockDB{
+		execFn: func(_ context.Context, _ string, _ ...any) (pgconn.CommandTag, error) {
+			return pgconn.NewCommandTag("DELETE 0"), nil
+		},
+	}
+	svc := NewService(db)
+
+	err := svc.DeleteMbsGroupMembership(context.Background(), "mbs-group-1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusNotFound)
+}
