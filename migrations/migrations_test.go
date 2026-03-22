@@ -25,8 +25,9 @@ func TestEmbeddedMigrationsParseable(t *testing.T) {
 	}
 
 	// Phase 2 delivers 26 migration files (000001–000026),
-	// Phase 4 adds migration 000027 for SUCI profiles.
-	const expectedCount = 27
+	// Phase 4 adds migration 000027 for SUCI profiles,
+	// Phase 5 adds migrations 000028–000030 for VN groups and MBS group membership.
+	const expectedCount = 30
 	if len(migrations) != expectedCount {
 		t.Fatalf("expected %d migrations, got %d", expectedCount, len(migrations))
 	}
@@ -108,6 +109,9 @@ func TestMigrationExpectedNames(t *testing.T) {
 		{25, "create_indexes"},
 		{26, "create_tablespaces"},
 		{27, "create_suci_profiles"},
+		{28, "create_vn_groups"},
+		{29, "create_vn_group_members"},
+		{30, "create_mbs_group_membership"},
 	}
 
 	if len(migrations) != len(expected) {

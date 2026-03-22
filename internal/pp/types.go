@@ -25,3 +25,30 @@ type PpData struct {
 	PpMaximumResponseTime        *int            `json:"ppMaximumResponseTime,omitempty"`
 	PpMaximumLatency             *int            `json:"ppMaximumLatency,omitempty"`
 }
+
+// VnGroupConfiguration represents a 5G VN group configuration.
+//
+// 3GPP: TS 29.503 — 5GVnGroupConfiguration data type
+type VnGroupConfiguration struct {
+	Dnn                     string          `json:"dnn,omitempty"`
+	SNssai                  json.RawMessage `json:"sNssai,omitempty"`
+	PduSessionTypes         []string        `json:"pduSessionTypes,omitempty"`
+	AppDescriptors          json.RawMessage `json:"appDescriptors,omitempty"`
+	SecondaryAuth           bool            `json:"secondaryAuth,omitempty"`
+	DnAaaAddress            json.RawMessage `json:"dnAaaAddress,omitempty"`
+	DnAaaFqdn               string          `json:"dnAaaFqdn,omitempty"`
+	Members                 []string        `json:"members,omitempty"`
+	ReferenceId             string          `json:"referenceId,omitempty"`
+	AfInstanceId            string          `json:"afInstanceId,omitempty"`
+	InternalGroupIdentifier string          `json:"internalGroupIdentifier,omitempty"`
+	MtcProviderInformation  json.RawMessage `json:"mtcProviderInformation,omitempty"`
+}
+
+// MbsGroupMemb represents a multicast MBS group membership.
+//
+// 3GPP: TS 29.503 — MulticastMbsGroupMemb data type
+type MbsGroupMemb struct {
+	MulticastGroupMemb      json.RawMessage `json:"multicastGroupMemb,omitempty"`
+	AfInstanceId            string          `json:"afInstanceId,omitempty"`
+	InternalGroupIdentifier string          `json:"internalGroupIdentifier,omitempty"`
+}
