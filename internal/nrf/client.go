@@ -197,8 +197,8 @@ func (c *Client) StartHeartbeat(ctx context.Context) {
 			case <-hbCtx.Done():
 				return
 			case <-ticker.C:
-				// Best-effort heartbeat; errors are silently discarded to avoid
-				// stopping the loop. In production, add structured logging here.
+				// Best-effort heartbeat; errors are silently discarded.
+				// TODO: add structured logging for heartbeat failures.
 				_ = c.Heartbeat(hbCtx)
 			}
 		}

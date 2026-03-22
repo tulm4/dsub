@@ -137,7 +137,7 @@ func (s *Service) Deconceal(ctx context.Context, req *SuciDeconcealRequest) (*Su
 	}
 
 	// Perform ECIES de-concealment via HSM (private key never in app memory).
-	// Map deconcealment failures to client error without exposing crypto details.
+	// Map de-concealment failures to client error without exposing crypto details.
 	// Based on: docs/sbi-api-design.md §7 (error mapping), TS 29.503 ProblemDetails causes.
 	plainMSIN, err := s.hsm.DeconcealMSIN(profile.HSMKeyRef, profileType, ephemeralPubKey, cipherText)
 	if err != nil {
