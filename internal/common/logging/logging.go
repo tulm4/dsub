@@ -18,7 +18,7 @@ import (
 // Fluentd/OTel.
 //
 // Based on: docs/service-decomposition.md §3.2 (udm-common logging)
-func NewLogger(level string, serviceName, region string) *slog.Logger {
+func NewLogger(level, serviceName, region string) *slog.Logger {
 	lvl := ParseLevel(level)
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: lvl,

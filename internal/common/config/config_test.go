@@ -54,30 +54,30 @@ func TestLoad_Defaults(t *testing.T) {
 
 func TestLoad_AllEnvVars(t *testing.T) {
 	envs := map[string]string{
-		"UDM_SERVICE_NAME":          "udm-ueau",
-		"UDM_SERVICE_VERSION":       "v1.2.3",
-		"UDM_REGION":                "us-east-1",
-		"UDM_AVAILABILITY_ZONE":     "us-east-1a",
-		"UDM_HTTP_PORT":             "9080",
-		"UDM_METRICS_PORT":          "9190",
-		"UDM_LOG_LEVEL":             "debug",
-		"UDM_DB_DSN":                "postgres://user:pass@host:5433/udm",
-		"UDM_DB_MAX_OPEN_CONNS":     "100",
-		"UDM_DB_MAX_IDLE_CONNS":     "50",
-		"UDM_DB_CONN_MAX_LIFETIME":  "600s",
-		"UDM_CACHE_L1_MAX_SIZE":     "1000000000",
-		"UDM_CACHE_L1_TTL":          "20s",
-		"UDM_CACHE_L2_TTL":          "120s",
-		"REDIS_ADDRS":               "redis-0:6379,redis-1:6379,redis-2:6379",
-		"REDIS_PASSWORD":            "s3cret",
-		"UDM_NRF_DISCOVERY_URL":     "https://nrf.5gc.local/nnrf-disc/v1",
-		"UDM_NRF_HEARTBEAT_INTERVAL": "60s",
-		"TLS_CERT_FILE":             "/certs/tls.crt",
-		"TLS_KEY_FILE":              "/certs/tls.key",
-		"TLS_CA_CERT_FILE":          "/certs/ca.crt",
+		"UDM_SERVICE_NAME":            "udm-ueau",
+		"UDM_SERVICE_VERSION":         "v1.2.3",
+		"UDM_REGION":                  "us-east-1",
+		"UDM_AVAILABILITY_ZONE":       "us-east-1a",
+		"UDM_HTTP_PORT":               "9080",
+		"UDM_METRICS_PORT":            "9190",
+		"UDM_LOG_LEVEL":               "debug",
+		"UDM_DB_DSN":                  "postgres://user:pass@host:5433/udm",
+		"UDM_DB_MAX_OPEN_CONNS":       "100",
+		"UDM_DB_MAX_IDLE_CONNS":       "50",
+		"UDM_DB_CONN_MAX_LIFETIME":    "600s",
+		"UDM_CACHE_L1_MAX_SIZE":       "1000000000",
+		"UDM_CACHE_L1_TTL":            "20s",
+		"UDM_CACHE_L2_TTL":            "120s",
+		"REDIS_ADDRS":                 "redis-0:6379,redis-1:6379,redis-2:6379",
+		"REDIS_PASSWORD":              "s3cret",
+		"UDM_NRF_DISCOVERY_URL":       "https://nrf.5gc.local/nnrf-disc/v1",
+		"UDM_NRF_HEARTBEAT_INTERVAL":  "60s",
+		"TLS_CERT_FILE":               "/certs/tls.crt",
+		"TLS_KEY_FILE":                "/certs/tls.key",
+		"TLS_CA_CERT_FILE":            "/certs/ca.crt",
 		"OTEL_EXPORTER_OTLP_ENDPOINT": "otel-collector:4317",
-		"OTEL_SAMPLER_ARG":          "0.1",
-		"UDM_SHUTDOWN_TIMEOUT":      "45s",
+		"OTEL_SAMPLER_ARG":            "0.1",
+		"UDM_SHUTDOWN_TIMEOUT":        "45s",
 	}
 	for k, v := range envs {
 		t.Setenv(k, v)
@@ -235,10 +235,8 @@ func TestValidate(t *testing.T) {
 				if !strings.Contains(err.Error(), tc.errMsg) {
 					t.Errorf("error %q should contain %q", err.Error(), tc.errMsg)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("Validate() returned unexpected error: %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("Validate() returned unexpected error: %v", err)
 			}
 		})
 	}

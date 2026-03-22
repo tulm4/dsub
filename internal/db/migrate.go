@@ -70,7 +70,8 @@ func (m *MigrationRunner) Apply(ctx context.Context, migration Migration) error 
 	if err != nil {
 		return fmt.Errorf("db: begin migration tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	//nolint:errcheck // rollback on deferred cleanup is best-effort
+	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, migration.SQL); err != nil {
 		return fmt.Errorf("db: execute migration %d (%s): %w", migration.Version, migration.Description, err)
@@ -123,15 +124,15 @@ func ParseMigrations(filesystem fs.FS) ([]Migration, error) {
 		}
 
 		var version int
-		if _, err := fmt.Sscanf(parts[0], "%d", &version); err != nil {
-			return fmt.Errorf("db: invalid migration version in %s: %w", name, err)
+		if _, scanErr := fmt.Sscanf(parts[0], "%d", &version); scanErr != nil {
+			return fmt.Errorf("db: invalid migration version in %s: %w", name, scanErr)
 		}
 
 		description := strings.TrimSuffix(parts[1], ".up.sql")
 
-		content, err := fs.ReadFile(filesystem, path)
-		if err != nil {
-			return fmt.Errorf("db: read migration %s: %w", name, err)
+		content, readErr := fs.ReadFile(filesystem, path)
+		if readErr != nil {
+			return fmt.Errorf("db: read migration %s: %w", name, readErr)
 		}
 
 		migrations = append(migrations, Migration{

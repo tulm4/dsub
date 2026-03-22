@@ -75,7 +75,7 @@ func ValidateSUPI(supi string) error {
 // PLMN context (e.g., an MCC-to-MNC-length lookup table), which will be
 // added when service-level PLMN configuration is available.
 func ParseSUPI(supi string) (mcc, mnc, msin string, err error) {
-	if err = ValidateSUPI(supi); err != nil {
+	if err := ValidateSUPI(supi); err != nil {
 		return "", "", "", err
 	}
 	m := supiRegex.FindStringSubmatch(supi)
@@ -112,7 +112,7 @@ func ValidateGPSI(gpsi string) error {
 // "extid") and the identifier value. It returns an error if the format is
 // invalid.
 func ParseGPSI(gpsi string) (format, value string, err error) {
-	if err = ValidateGPSI(gpsi); err != nil {
+	if err := ValidateGPSI(gpsi); err != nil {
 		return "", "", err
 	}
 	if strings.HasPrefix(gpsi, "msisdn-") {

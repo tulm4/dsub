@@ -96,7 +96,7 @@ jobs:
 
     services:
       yugabytedb:
-        image: yugabytedb/yugabyte:2024.2.3.0-b0
+        image: yugabytedb/yugabyte:2024.2.4.2-b2
         env:
           YSQL_USER: yugabyte
           YSQL_PASSWORD: yugabyte

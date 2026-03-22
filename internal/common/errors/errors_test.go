@@ -53,9 +53,10 @@ func TestProblemDetails_Error(t *testing.T) {
 }
 
 func TestProblemDetails_ImplementsError(t *testing.T) {
-	var err error = NewNotFound("not found", CauseUserNotFound)
-	if err == nil {
-		t.Fatal("expected non-nil error")
+	pd := NewNotFound("not found", CauseUserNotFound)
+	var err error = pd
+	if pd == nil {
+		t.Fatal("expected non-nil ProblemDetails")
 	}
 	if !strings.Contains(err.Error(), "USER_NOT_FOUND") {
 		t.Errorf("error string should contain cause code, got %q", err.Error())
@@ -222,7 +223,10 @@ func TestJSON_Serialization(t *testing.T) {
 	if !ok || len(params) != 1 {
 		t.Fatalf("invalidParams: expected array of length 1, got %v", got["invalidParams"])
 	}
-	p := params[0].(map[string]interface{})
+	p, ok := params[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("invalidParams[0]: expected map, got %T", params[0])
+	}
 	if p["param"] != "supi" || p["reason"] != "invalid SUPI format" {
 		t.Errorf("invalidParams[0] = %v, want param=supi, reason=invalid SUPI format", p)
 	}
@@ -295,27 +299,27 @@ func TestJSON_OmitEmpty(t *testing.T) {
 
 func TestWriteProblemDetails(t *testing.T) {
 	tests := []struct {
-		name           string
-		pd             *ProblemDetails
-		wantStatus     int
-		wantContains   []string
-		wantAbsent     []string
+		name            string
+		pd              *ProblemDetails
+		wantStatus      int
+		wantContains    []string
+		wantAbsent      []string
 		wantContentType string
 	}{
 		{
-			name:           "basic 404",
-			pd:             NewNotFound("subscriber not found", CauseUserNotFound),
-			wantStatus:     404,
-			wantContains:   []string{`"status":404`, `"title":"Not Found"`, `"cause":"USER_NOT_FOUND"`},
-			wantAbsent:     []string{`"invalidParams"`},
+			name:            "basic 404",
+			pd:              NewNotFound("subscriber not found", CauseUserNotFound),
+			wantStatus:      404,
+			wantContains:    []string{`"status":404`, `"title":"Not Found"`, `"cause":"USER_NOT_FOUND"`},
+			wantAbsent:      []string{`"invalidParams"`},
 			wantContentType: "application/problem+json",
 		},
 		{
-			name:           "500 without cause",
-			pd:             NewInternalError("unexpected failure"),
-			wantStatus:     500,
-			wantContains:   []string{`"status":500`, `"title":"Internal Server Error"`},
-			wantAbsent:     []string{`"cause"`},
+			name:            "500 without cause",
+			pd:              NewInternalError("unexpected failure"),
+			wantStatus:      500,
+			wantContains:    []string{`"status":500`, `"title":"Internal Server Error"`},
+			wantAbsent:      []string{`"cause"`},
 			wantContentType: "application/problem+json",
 		},
 		{
@@ -328,8 +332,8 @@ func TestWriteProblemDetails(t *testing.T) {
 				}
 				return pd
 			}(),
-			wantStatus:   400,
-			wantContains: []string{`"invalidParams"`, `"supi"`, `"servingPlmnId"`, `"MANDATORY_IE_MISSING"`},
+			wantStatus:      400,
+			wantContains:    []string{`"invalidParams"`, `"supi"`, `"servingPlmnId"`, `"MANDATORY_IE_MISSING"`},
 			wantContentType: "application/problem+json",
 		},
 	}

@@ -180,5 +180,6 @@ func runChecks(ctx context.Context, checks map[string]Checker) (map[string]strin
 func writeJSON(w http.ResponseWriter, code int, status Status) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(status) //nolint:errcheck
+	//nolint:errcheck // error writing health status JSON is non-actionable
+	json.NewEncoder(w).Encode(status)
 }

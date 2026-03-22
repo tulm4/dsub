@@ -109,7 +109,7 @@ func TestReadJSON_EmptyBody(t *testing.T) {
 }
 
 func TestReadJSON_NilBody(t *testing.T) {
-	r := httptest.NewRequest(http.MethodPost, "/", nil)
+	r := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 	r.Body = nil
 	if err := ReadJSON(r, &struct{}{}); err == nil {
 		t.Fatal("ReadJSON with nil body should return error")
@@ -194,7 +194,7 @@ func TestGetCorrelationInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 			if tt.value != "" {
 				r.Header.Set(HeaderCorrelationInfo, tt.value)
 			}
@@ -224,7 +224,7 @@ func TestGetMessagePriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 			if tt.value != "" {
 				r.Header.Set(HeaderMessagePriority, tt.value)
 			}

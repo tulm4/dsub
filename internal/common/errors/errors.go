@@ -2,7 +2,7 @@
 // for the 5G UDM network function.
 //
 // Based on: docs/sbi-api-design.md §7 (Error Handling)
-// 3GPP: TS 29.500 §5.2.7 — Error Signalling
+// 3GPP: TS 29.500 §5.2.7 — Error Signaling
 // 3GPP: TS 29.503 — Nudm cause codes
 package errors
 
