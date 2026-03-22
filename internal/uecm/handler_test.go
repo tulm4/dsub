@@ -294,7 +294,7 @@ func TestHandleGet3GppRegistration_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -320,7 +320,7 @@ func TestHandleGet3GppRegistration_NotFound(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -466,7 +466,7 @@ func TestHandleDeregisterSmf_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodDelete,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -479,7 +479,7 @@ func TestHandleDeregisterSmf_InvalidPduSessionID(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodDelete,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/abc", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/abc", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -538,7 +538,7 @@ func TestHandleDeregisterSmsf3Gpp_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodDelete,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -569,7 +569,7 @@ func TestHandleGetRegistrations_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -598,7 +598,7 @@ func TestHandleNotImplemented_IpSmGw(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPut,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/ip-sm-gw", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/ip-sm-gw", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -612,7 +612,7 @@ func TestRouteNotFound(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-uecm/v1/imsi-001010000000001/registrations/nonexistent", nil)
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 

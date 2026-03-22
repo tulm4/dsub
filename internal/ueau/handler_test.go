@@ -267,7 +267,7 @@ func TestHandleGetRgAuthData_NotImplemented(t *testing.T) {
 	handler.RegisterRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-ueau/v1/imsi-001010000000001/security-information-rg", nil)
+		"/nudm-ueau/v1/imsi-001010000000001/security-information-rg", http.NoBody)
 	w := httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
@@ -285,7 +285,7 @@ func TestRouteNotFound(t *testing.T) {
 	handler.RegisterRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-ueau/v1/imsi-001010000000001/nonexistent", nil)
+		"/nudm-ueau/v1/imsi-001010000000001/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
 
 	mux.ServeHTTP(w, req)
