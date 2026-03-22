@@ -391,6 +391,8 @@ COMMENT ON TABLE udm.access_mobility_subscription IS
 CREATE TABLE udm.session_management_subscription (
     supi                    TEXT        NOT NULL,
     serving_plmn_id         TEXT        NOT NULL DEFAULT '00000',
+    nssai_sst               INTEGER     NOT NULL,
+    nssai_sd                TEXT        NOT NULL DEFAULT '',
     single_nssai            JSONB       NOT NULL,
     dnn_configurations      JSONB       NOT NULL DEFAULT '{}'::JSONB,
     internal_group_ids      TEXT[],
@@ -406,14 +408,16 @@ CREATE TABLE udm.session_management_subscription (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    PRIMARY KEY (supi, serving_plmn_id, single_nssai),
+    PRIMARY KEY (supi, serving_plmn_id, nssai_sst, nssai_sd),
     CONSTRAINT fk_sm_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
 ) SPLIT INTO 128 TABLETS;
 
 COMMENT ON TABLE udm.session_management_subscription IS
     'Session management subscription data per slice (S-NSSAI). Contains DNN configurations '
-    'with QoS profiles, PDU session types, and SSC modes as JSONB.';
+    'with QoS profiles, PDU session types, and SSC modes as JSONB. '
+    'The S-NSSAI is decomposed into nssai_sst (SST) and nssai_sd (SD) for PK compatibility '
+    'with YugabyteDB, which does not support JSONB columns in primary keys.';
 COMMENT ON COLUMN udm.session_management_subscription.dnn_configurations IS
     'Map of DNN -> DnnConfiguration objects. Each entry defines PDU session type, '
     'SSC mode, 5G QoS profile, session AMBR, and static IP config.';
@@ -1038,7 +1042,7 @@ CREATE INDEX idx_amf_reg_covering
 -- SM data hot path: SMF retrieves DNN configs for a subscriber/PLMN/slice.
 CREATE INDEX idx_sm_data_covering
     ON udm.session_management_subscription (supi, serving_plmn_id)
-    INCLUDE (single_nssai, dnn_configurations)
+    INCLUDE (nssai_sst, nssai_sd, single_nssai, dnn_configurations)
     SPLIT INTO 64 TABLETS;
 ```
 

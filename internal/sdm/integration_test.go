@@ -216,8 +216,8 @@ func TestIntegrationGetSmData(t *testing.T) {
 
 	_, err := pool.Exec(ctx,
 		`INSERT INTO udm.session_management_subscription
-			(supi, serving_plmn_id, single_nssai, dnn_configurations)
-		 VALUES ($1, '00101', $2, $3)`,
+			(supi, serving_plmn_id, nssai_sst, nssai_sd, single_nssai, dnn_configurations)
+		 VALUES ($1, '00101', 1, '000001', $2, $3)`,
 		testSUPI, singleNssai1, dnnConfigs1,
 	)
 	if err != nil {
@@ -226,8 +226,8 @@ func TestIntegrationGetSmData(t *testing.T) {
 
 	_, err = pool.Exec(ctx,
 		`INSERT INTO udm.session_management_subscription
-			(supi, serving_plmn_id, single_nssai, dnn_configurations)
-		 VALUES ($1, '00101', $2, $3)`,
+			(supi, serving_plmn_id, nssai_sst, nssai_sd, single_nssai, dnn_configurations)
+		 VALUES ($1, '00101', 1, '000002', $2, $3)`,
 		testSUPI, singleNssai2, dnnConfigs2,
 	)
 	if err != nil {

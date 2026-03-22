@@ -1,5 +1,6 @@
 # golangci-lint configuration for 5G UDM project
 # Based on: docs/testing-strategy.md §7 (CI/CD Integration)
+version: "2"
 
 run:
   timeout: 5m
@@ -14,9 +15,12 @@ linters:
     - unused
     - gosimple
     - gocritic
+    - misspell
+
+formatters:
+  enable:
     - gofmt
     - goimports
-    - misspell
 
 linters-settings:
   errcheck:
