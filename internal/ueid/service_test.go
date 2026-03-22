@@ -116,7 +116,7 @@ func TestDeconceal_NullScheme(t *testing.T) {
 // TestDeconceal_NullScheme_InvalidSUPI tests SUPI validation for null scheme.
 func TestDeconceal_NullScheme_InvalidSUPI(t *testing.T) {
 	svc := NewService(&mockDB{}, newTestHSM())
-	// EncryptedMSIN contains hex chars not valid for IMSI digits
+	// EncryptedMSIN contains hex characters not valid for IMSI digits
 	_, err := svc.Deconceal(context.Background(), &SuciDeconcealRequest{
 		Suci: "suci-0-001-01-0000-0-0-abcdef",
 	})
