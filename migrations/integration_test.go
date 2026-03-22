@@ -159,6 +159,9 @@ func TestIntegrationSchemaTablesExist(t *testing.T) {
 		"ip_sm_gw_registrations",
 		"message_waiting_data",
 		"audit_log",
+		"vn_groups",
+		"vn_group_members",
+		"mbs_group_membership",
 	}
 
 	for _, table := range expectedTables {
