@@ -581,6 +581,320 @@ func TestMatchPath(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Handler tests for uncovered endpoints
+// ---------------------------------------------------------------------------
+
+func TestHandleGetSmfSelData_Success(t *testing.T) {
+	svc := &mockService{
+		getSmfSelDataFn: func(_ context.Context, supi string) (*SmfSelectionSubscriptionData, error) {
+			return &SmfSelectionSubscriptionData{
+				SubscribedSnssaiInfos: json.RawMessage(`{"1":{"dnnInfos":[]}}`),
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/smf-select-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result SmfSelectionSubscriptionData
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.SubscribedSnssaiInfos == nil {
+		t.Error("expected non-nil subscribedSnssaiInfos")
+	}
+}
+
+func TestHandleGetSmsData_Success(t *testing.T) {
+	svc := &mockService{
+		getSmsDataFn: func(_ context.Context, supi string) (*SmsSubscriptionData, error) {
+			return &SmsSubscriptionData{SmsSubscribed: true}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/sms-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result SmsSubscriptionData
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !result.SmsSubscribed {
+		t.Error("expected smsSubscribed=true")
+	}
+}
+
+func TestHandleGetSmsMngtData_Success(t *testing.T) {
+	svc := &mockService{
+		getSmsMngtDataFn: func(_ context.Context, supi string) (*SmsManagementSubscriptionData, error) {
+			return &SmsManagementSubscriptionData{MtSmsSubscribed: true}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/sms-mng-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result SmsManagementSubscriptionData
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !result.MtSmsSubscribed {
+		t.Error("expected mtSmsSubscribed=true")
+	}
+}
+
+func TestHandleGetUeCtxInAmfData_Success(t *testing.T) {
+	svc := &mockService{
+		getUeCtxInAmfDataFn: func(_ context.Context, supi string) (*UeContextInAmfData, error) {
+			return &UeContextInAmfData{
+				AccessDetails: json.RawMessage(`{"3gpp":{}}`),
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/ue-context-in-amf-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetUeCtxInSmfData_Success(t *testing.T) {
+	svc := &mockService{
+		getUeCtxInSmfDataFn: func(_ context.Context, supi string) (*UeContextInSmfData, error) {
+			return &UeContextInSmfData{
+				PduSessions: json.RawMessage(`{"1":{}}`),
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/ue-context-in-smf-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetUeCtxInSmsfData_Success(t *testing.T) {
+	svc := &mockService{
+		getUeCtxInSmsfDataFn: func(_ context.Context, supi string) (*UeContextInSmsfData, error) {
+			return &UeContextInSmsfData{
+				SmsfInfo3GppAccess: json.RawMessage(`{}`),
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/ue-context-in-smsf-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetTraceConfigData_Success(t *testing.T) {
+	svc := &mockService{
+		getTraceConfigDataFn: func(_ context.Context, supi string) (*TraceData, error) {
+			return &TraceData{TraceRef: "001001-00001", TraceDepth: "MINIMUM"}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/trace-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result TraceData
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.TraceRef != "001001-00001" {
+		t.Errorf("unexpected traceRef: %s", result.TraceRef)
+	}
+}
+
+func TestHandleModifySubscription_Success(t *testing.T) {
+	svc := &mockService{
+		modifySubscriptionFn: func(_ context.Context, ueID, subscriptionID string, patch *SdmSubscription) (*SdmSubscription, error) {
+			if ueID != "imsi-001010000000001" {
+				t.Errorf("unexpected ueID: %s", ueID)
+			}
+			if subscriptionID != "sub-001" {
+				t.Errorf("unexpected subscriptionId: %s", subscriptionID)
+			}
+			patch.SubscriptionID = subscriptionID
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"callbackReference":"https://amf.example.com/new-callback"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/sub-001",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result SdmSubscription
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.SubscriptionID != "sub-001" {
+		t.Errorf("expected subscriptionId sub-001, got %s", result.SubscriptionID)
+	}
+}
+
+func TestHandleModifySubscription_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/sub-001",
+		bytes.NewBufferString("{invalid json"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
+func TestHandleGetIdTranslation_NotFound(t *testing.T) {
+	svc := &mockService{
+		getIdTranslationFn: func(_ context.Context, _ string) (*IdTranslationResult, error) {
+			return nil, errors.NewNotFound("subscriber not found", errors.CauseUserNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/id-translation-result", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
+func TestHandleGetSmfSelData_NotFound(t *testing.T) {
+	svc := &mockService{
+		getSmfSelDataFn: func(_ context.Context, _ string) (*SmfSelectionSubscriptionData, error) {
+			return nil, errors.NewNotFound("SMF selection data not found", errors.CauseDataNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/smf-select-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
+func TestHandleGetSmsData_NotFound(t *testing.T) {
+	svc := &mockService{
+		getSmsDataFn: func(_ context.Context, _ string) (*SmsSubscriptionData, error) {
+			return nil, errors.NewNotFound("SMS data not found", errors.CauseDataNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/sms-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
+func TestHandleGetUeCtxInAmfData_NotFound(t *testing.T) {
+	svc := &mockService{
+		getUeCtxInAmfDataFn: func(_ context.Context, _ string) (*UeContextInAmfData, error) {
+			return nil, errors.NewNotFound("UE context in AMF data not found", errors.CauseDataNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-sdm/v2/imsi-001010000000001/ue-context-in-amf-data", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
+func TestHandleModifySubscription_NotFound(t *testing.T) {
+	svc := &mockService{
+		modifySubscriptionFn: func(_ context.Context, _, _ string, _ *SdmSubscription) (*SdmSubscription, error) {
+			return nil, errors.NewNotFound("subscription not found", errors.CauseSubscriptionNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"callbackReference":"https://amf.example.com/new-callback"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/sub-001",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+	assertProblemDetailsContentType(t, w)
+}
+
 // assertProblemDetailsContentType verifies the Content-Type is application/problem+json.
 func assertProblemDetailsContentType(t *testing.T, w *httptest.ResponseRecorder) {
 	t.Helper()
