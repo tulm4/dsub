@@ -17,15 +17,18 @@ import (
 )
 
 // GetAccessToken obtains an OAuth2 access token from the NRF for the given
-// scope. Tokens are cached with TTL based on the expires_in value.
+// target NF type and scope. Tokens are cached with TTL based on the expires_in value.
 //
 // Based on: docs/sbi-api-design.md §6
 // 3GPP: TS 29.510 §5.4.2.2 — Access Token Request
 // Method: POST /oauth2/token (NRF token endpoint)
-func (c *Client) GetAccessToken(ctx context.Context, scope string) (string, error) {
+func (c *Client) GetAccessToken(ctx context.Context, targetNFType, scope string) (string, error) {
+	// Cache key includes both targetNFType and scope for correctness
+	cacheKey := targetNFType + ":" + scope
+
 	// Check token cache first
 	c.mu.RLock()
-	cached, ok := c.tokenCache[scope]
+	cached, ok := c.tokenCache[cacheKey]
 	c.mu.RUnlock()
 
 	if ok && time.Now().Before(cached.ExpiresAt) {
@@ -39,7 +42,7 @@ func (c *Client) GetAccessToken(ctx context.Context, scope string) (string, erro
 		"grant_type":    {"client_credentials"},
 		"nfInstanceId":  {c.cfg.NFProfile.NFInstanceID},
 		"nfType":        {c.cfg.NFProfile.NFType},
-		"targetNfType":  {"UDM"},
+		"targetNfType":  {targetNFType},
 		"scope":         {scope},
 	}
 
@@ -72,7 +75,7 @@ func (c *Client) GetAccessToken(ctx context.Context, scope string) (string, erro
 	}
 
 	c.mu.Lock()
-	c.tokenCache[scope] = &cachedToken{
+	c.tokenCache[cacheKey] = &cachedToken{
 		Token:     tokenResp.AccessToken,
 		ExpiresAt: time.Now().Add(expiry),
 	}

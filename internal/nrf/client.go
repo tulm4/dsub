@@ -47,8 +47,9 @@ type Client struct {
 	cancel context.CancelFunc
 
 	mu             sync.RWMutex
+	running        bool                      // guards against multiple StartHeartbeat calls
 	discoveryCache map[string]*DiscoveryEntry // keyed by targetNFType
-	tokenCache     map[string]*cachedToken    // keyed by scope
+	tokenCache     map[string]*cachedToken    // keyed by "targetNFType:scope"
 }
 
 // NewClient creates a new NRF client.
@@ -168,20 +169,36 @@ func (c *Client) Heartbeat(ctx context.Context) error {
 
 // StartHeartbeat begins periodic heartbeat in a background goroutine.
 // Call Stop() to cancel. The heartbeat goroutine runs until the context is cancelled.
+// Calling StartHeartbeat multiple times is safe — subsequent calls are no-ops
+// if a heartbeat loop is already running.
 func (c *Client) StartHeartbeat(ctx context.Context) {
+	c.mu.Lock()
+	if c.running {
+		c.mu.Unlock()
+		return
+	}
+	c.running = true
+	c.mu.Unlock()
+
 	hbCtx, cancel := context.WithCancel(ctx)
 	c.cancel = cancel
 
 	go func() {
 		ticker := time.NewTicker(c.cfg.HeartbeatInterval)
 		defer ticker.Stop()
+		defer func() {
+			c.mu.Lock()
+			c.running = false
+			c.mu.Unlock()
+		}()
 
 		for {
 			select {
 			case <-hbCtx.Done():
 				return
 			case <-ticker.C:
-				// Best-effort heartbeat; errors are logged but don't stop the loop.
+				// Best-effort heartbeat; errors are silently discarded to avoid
+				// stopping the loop. In production, add structured logging here.
 				_ = c.Heartbeat(hbCtx)
 			}
 		}

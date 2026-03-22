@@ -28,12 +28,29 @@ type DB interface {
 //
 // Based on: docs/service-decomposition.md §2.10
 type Service struct {
-	db DB
+	db  DB
+	hsm HSMDecrypter
 }
 
-// NewService creates a new UEID service with the given database dependency.
-func NewService(db DB) *Service {
-	return &Service{db: db}
+// NewService creates a new UEID service with the given database dependency
+// and HSM decrypter for ECIES de-concealment.
+//
+// Based on: docs/security.md §4.3/§4.4 (private key operations via HSM)
+func NewService(db DB, hsm HSMDecrypter) *Service {
+	return &Service{db: db, hsm: hsm}
+}
+
+// ResolveSUCI resolves a SUCI to a SUPI. This method satisfies the
+// ueau.SUCIResolver interface, enabling direct integration without an adapter.
+//
+// Based on: docs/service-decomposition.md §2.1, §2.10 (UEAU ↔ UEID integration)
+// 3GPP: TS 33.501 §6.12 — SUCI de-concealment
+func (s *Service) ResolveSUCI(ctx context.Context, suci string) (string, error) {
+	resp, err := s.Deconceal(ctx, &SuciDeconcealRequest{Suci: suci})
+	if err != nil {
+		return "", err
+	}
+	return resp.Supi, nil
 }
 
 // Deconceal performs SUCI de-concealment to recover the SUPI.
@@ -41,9 +58,9 @@ func NewService(db DB) *Service {
 // The procedure:
 //  1. Parse and validate the SUCI format
 //  2. Extract scheme_id and HN_pub_key_id
-//  3. Look up the HPLMN private key from suci_profiles
-//  4. Perform ECIES decryption (Profile A or B)
-//  5. Reconstruct the SUPI from decrypted MSIN + MCC/MNC
+//  3. Look up the HPLMN key profile from suci_profiles
+//  4. Perform ECIES decryption via HSM (Profile A or B)
+//  5. Reconstruct and validate the SUPI from decrypted MSIN + MCC/MNC
 //
 // Based on: docs/security.md §4.4 (SUCI Deconceal Process Security)
 // Based on: docs/sequence-diagrams.md §2 (SUCI resolution in registration flow)
@@ -70,6 +87,13 @@ func (s *Service) Deconceal(ctx context.Context, req *SuciDeconcealRequest) (*Su
 	// Null scheme (scheme_id=0) means MSIN is not encrypted
 	if components.SchemeID == 0 {
 		supi := fmt.Sprintf("imsi-%s%s%s", components.MCC, components.MNC, components.EncryptedMSIN)
+		// Validate the reconstructed SUPI to avoid returning malformed identifiers.
+		if err := identifiers.ValidateSUPI(supi); err != nil {
+			return nil, errors.NewBadRequest(
+				fmt.Sprintf("invalid SUPI constructed from SUCI: %s", err),
+				errors.CauseMandatoryIEIncorrect,
+			)
+		}
 		return &SuciDeconcealResponse{Supi: supi}, nil
 	}
 
@@ -79,7 +103,7 @@ func (s *Service) Deconceal(ctx context.Context, req *SuciDeconcealRequest) (*Su
 		return nil, errors.NewBadRequest(err.Error(), errors.CauseMandatoryIEIncorrect)
 	}
 
-	// Look up the HPLMN private key
+	// Look up the HPLMN key profile (metadata only — private key stays in HSM)
 	profile, err := s.getSUCIProfile(ctx, components.HNKeyID)
 	if err != nil {
 		return nil, err
@@ -112,27 +136,39 @@ func (s *Service) Deconceal(ctx context.Context, req *SuciDeconcealRequest) (*Su
 		)
 	}
 
-	// Perform ECIES de-concealment
-	plainMSIN, err := DeconcealMSIN(profileType, profile.PrivateKey, ephemeralPubKey, cipherText)
+	// Perform ECIES de-concealment via HSM (private key never in app memory).
+	// Map deconcealment failures to client error without exposing crypto details.
+	// Based on: docs/sbi-api-design.md §7 (error mapping), TS 29.503 ProblemDetails causes.
+	plainMSIN, err := s.hsm.DeconcealMSIN(profile.HSMKeyRef, profileType, ephemeralPubKey, cipherText)
 	if err != nil {
-		return nil, errors.NewInternalError(fmt.Sprintf("SUCI de-concealment failed: %s", err))
+		return nil, errors.NewBadRequest("invalid SUCI cipher text", errors.CauseMandatoryIEIncorrect)
 	}
 
 	// Reconstruct the SUPI: imsi-<MCC><MNC><plaintext MSIN>
 	supi := fmt.Sprintf("imsi-%s%s%s", components.MCC, components.MNC, string(plainMSIN))
 
+	// Validate the reconstructed SUPI to avoid returning malformed identifiers.
+	if err := identifiers.ValidateSUPI(supi); err != nil {
+		return nil, errors.NewBadRequest(
+			fmt.Sprintf("invalid SUPI constructed from SUCI: %s", err),
+			errors.CauseMandatoryIEIncorrect,
+		)
+	}
+
 	return &SuciDeconcealResponse{Supi: supi}, nil
 }
 
-// getSUCIProfile retrieves a SUCI profile (HPLMN key pair) from the database.
+// getSUCIProfile retrieves SUCI profile metadata from the database.
+// Per docs/security.md §4.3/§4.4, private key material must not leave the HSM
+// boundary, so this function loads only the hsm_key_ref (not raw private key bytes).
 func (s *Service) getSUCIProfile(ctx context.Context, hnKeyID int) (*SUCIProfile, error) {
 	row := s.db.QueryRow(ctx,
-		"SELECT hn_key_id, profile_type, public_key, private_key, is_active FROM udm.suci_profiles WHERE hn_key_id = $1",
+		"SELECT hn_key_id, profile_type, public_key, hsm_key_ref, is_active FROM udm.suci_profiles WHERE hn_key_id = $1",
 		hnKeyID,
 	)
 
 	var profile SUCIProfile
-	err := row.Scan(&profile.HNKeyID, &profile.ProfileType, &profile.PublicKey, &profile.PrivateKey, &profile.IsActive)
+	err := row.Scan(&profile.HNKeyID, &profile.ProfileType, &profile.PublicKey, &profile.HSMKeyRef, &profile.IsActive)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, errors.NewNotFound(
