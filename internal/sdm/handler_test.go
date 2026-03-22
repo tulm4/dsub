@@ -166,7 +166,7 @@ func TestHandleGetAmData_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/am-data", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/am-data", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -195,7 +195,7 @@ func TestHandleGetAmData_NotFound(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/am-data", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/am-data", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -222,7 +222,7 @@ func TestHandleGetAmData_InvalidSUPI(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/bad-supi/am-data", nil)
+		"/nudm-sdm/v2/bad-supi/am-data", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -249,7 +249,7 @@ func TestHandleGetSmData_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/sm-data", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/sm-data", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -278,7 +278,7 @@ func TestHandleGetNSSAI_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/nssai", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/nssai", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -361,7 +361,7 @@ func TestHandleUnsubscribe_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodDelete,
-		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/sub-001", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/sub-001", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -379,7 +379,7 @@ func TestHandleUnsubscribe_NotFound(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodDelete,
-		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/nonexistent", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/sdm-subscriptions/nonexistent", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -404,7 +404,7 @@ func TestHandleGetIdTranslation_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/id-translation-result", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/id-translation-result", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -444,7 +444,7 @@ func TestHandleGetDataSets_Success(t *testing.T) {
 	mux := newTestMux(svc)
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001?dataset-names=AM,SMF_SEL", nil)
+		"/nudm-sdm/v2/imsi-001010000000001?dataset-names=AM,SMF_SEL", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -465,7 +465,7 @@ func TestHandleGetDataSets_MissingQueryParam(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001", nil)
+		"/nudm-sdm/v2/imsi-001010000000001", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -510,7 +510,7 @@ func TestRouteNotFound(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/nonexistent-path", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/nonexistent-path", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -523,7 +523,7 @@ func TestNotImplementedEndpoint(t *testing.T) {
 	mux := newTestMux(&mockService{})
 
 	req := httptest.NewRequest(http.MethodGet,
-		"/nudm-sdm/v2/imsi-001010000000001/v2x-data", nil)
+		"/nudm-sdm/v2/imsi-001010000000001/v2x-data", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 

@@ -418,8 +418,8 @@ func (h *Handler) handleRegisterSmf(w http.ResponseWriter, r *http.Request, ueID
 	}
 
 	var reg SmfRegistration
-	if err := sbi.ReadJSON(r, &reg); err != nil {
-		errors.WriteProblemDetails(w, errors.NewBadRequest(err.Error(), errors.CauseMandatoryIEIncorrect))
+	if readErr := sbi.ReadJSON(r, &reg); readErr != nil {
+		errors.WriteProblemDetails(w, errors.NewBadRequest(readErr.Error(), errors.CauseMandatoryIEIncorrect))
 		return
 	}
 
@@ -467,8 +467,8 @@ func (h *Handler) handleUpdateSmfRegistration(w http.ResponseWriter, r *http.Req
 	}
 
 	var patch SmfRegistration
-	if err := sbi.ReadJSON(r, &patch); err != nil {
-		errors.WriteProblemDetails(w, errors.NewBadRequest(err.Error(), errors.CauseMandatoryIEIncorrect))
+	if readErr := sbi.ReadJSON(r, &patch); readErr != nil {
+		errors.WriteProblemDetails(w, errors.NewBadRequest(readErr.Error(), errors.CauseMandatoryIEIncorrect))
 		return
 	}
 

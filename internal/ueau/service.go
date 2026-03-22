@@ -108,14 +108,14 @@ func (s *Service) GenerateAuthData(ctx context.Context, supiOrSuci string, req *
 
 	// Generate random RAND (128-bit)
 	randBytes := make([]byte, 16)
-	if _, err := rand.Read(randBytes); err != nil {
+	if _, randErr := rand.Read(randBytes); randErr != nil {
 		return nil, errors.NewInternalError("failed to generate RAND")
 	}
 
 	// Handle resynchronization if present
 	if req.ResynchronizationInfo != nil {
-		decodedRand, err := hex.DecodeString(req.ResynchronizationInfo.Rand)
-		if err != nil || len(decodedRand) != 16 {
+		decodedRand, decErr := hex.DecodeString(req.ResynchronizationInfo.Rand)
+		if decErr != nil || len(decodedRand) != 16 {
 			return nil, errors.NewBadRequest("invalid RAND in resynchronizationInfo", errors.CauseMandatoryIEIncorrect)
 		}
 		randBytes = decodedRand

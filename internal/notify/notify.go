@@ -29,7 +29,7 @@ import (
 // Configuration types
 // ---------------------------------------------------------------------------
 
-// RetryConfig controls exponential back-off retry behaviour.
+// RetryConfig controls exponential back-off retry behavior.
 type RetryConfig struct {
 	MaxRetries   int           // Maximum number of retry attempts (default 5).
 	InitialDelay time.Duration // Base delay before the first retry (default 1 s).
@@ -191,7 +191,7 @@ func (n *Notifier) Send(ctx context.Context, notif Notification) Result {
 				return Result{
 					Success:    false,
 					StatusCode: lastStatus,
-					Error:      fmt.Errorf("notify: context cancelled during retry: %w", ctx.Err()),
+					Error:      fmt.Errorf("notify: context canceled during retry: %w", ctx.Err()),
 					Attempts:   attempt,
 				}
 			case <-time.After(delay):

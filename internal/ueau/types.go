@@ -63,8 +63,8 @@ type AuthEvent struct {
 //
 // 3GPP: TS 29.503 — RgAuthCtx data type
 type RgAuthCtx struct {
-	AuthInd          bool   `json:"authInd"`
-	Supi             string `json:"supi,omitempty"`
+	AuthInd           bool   `json:"authInd"`
+	Supi              string `json:"supi,omitempty"`
 	SupportedFeatures string `json:"supportedFeatures,omitempty"`
 }
 
@@ -72,10 +72,10 @@ type RgAuthCtx struct {
 //
 // 3GPP: TS 29.503 — HssAuthenticationInfoRequest data type
 type HssAuthenticationInfoRequest struct {
-	NumOfRequestedVectors  int                    `json:"numOfRequestedVectors"`
-	AusfInstanceID         string                 `json:"ausfInstanceId"`
-	ResynchronizationInfo  *ResynchronizationInfo `json:"resynchronizationInfo,omitempty"`
-	SupportedFeatures      string                 `json:"supportedFeatures,omitempty"`
+	NumOfRequestedVectors int                    `json:"numOfRequestedVectors"`
+	AusfInstanceID        string                 `json:"ausfInstanceId"`
+	ResynchronizationInfo *ResynchronizationInfo `json:"resynchronizationInfo,omitempty"`
+	SupportedFeatures     string                 `json:"supportedFeatures,omitempty"`
 }
 
 // HssAuthenticationInfoResult is the response for GenerateAv (HSS interworking).
