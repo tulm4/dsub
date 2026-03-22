@@ -36,16 +36,30 @@ func (m *mockDB) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row 
 	return &mockRow{}
 }
 
+// scanString safely assigns a string to a scan destination.
+func scanString(dest any, val string) {
+	if p, ok := dest.(*string); ok {
+		*p = val
+	}
+}
+
+// scanBytes safely assigns a byte slice to a scan destination.
+func scanBytes(dest any, val []byte) {
+	if p, ok := dest.(*[]byte); ok {
+		*p = val
+	}
+}
+
 // validAuthCredentialsMockRow returns a mockRow that populates valid 5G_AKA auth credentials.
 func validAuthCredentialsMockRow() *mockRow {
 	return &mockRow{
 		scanFn: func(dest ...any) error {
-			*dest[0].(*string) = "imsi-001010000000001"
-			*dest[1].(*string) = "5G_AKA"
-			*dest[2].(*[]byte) = bytes.Repeat([]byte{0x01}, 16)
-			*dest[3].(*[]byte) = bytes.Repeat([]byte{0x02}, 16)
-			*dest[4].(*string) = "000000000001"
-			*dest[5].(*string) = "8000"
+			scanString(dest[0], "imsi-001010000000001")
+			scanString(dest[1], "5G_AKA")
+			scanBytes(dest[2], bytes.Repeat([]byte{0x01}, 16))
+			scanBytes(dest[3], bytes.Repeat([]byte{0x02}, 16))
+			scanString(dest[4], "000000000001")
+			scanString(dest[5], "8000")
 			return nil
 		},
 	}
@@ -55,7 +69,7 @@ func validAuthCredentialsMockRow() *mockRow {
 func successRow(val string) *mockRow {
 	return &mockRow{
 		scanFn: func(dest ...any) error {
-			*dest[0].(*string) = val
+			scanString(dest[0], val)
 			return nil
 		},
 	}
@@ -238,12 +252,12 @@ func TestGenerateAuthData_UnsupportedAuth(t *testing.T) {
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{
 				scanFn: func(dest ...any) error {
-					*dest[0].(*string) = "imsi-001010000000001"
-					*dest[1].(*string) = "UNSUPPORTED_METHOD"
-					*dest[2].(*[]byte) = bytes.Repeat([]byte{0x01}, 16)
-					*dest[3].(*[]byte) = bytes.Repeat([]byte{0x02}, 16)
-					*dest[4].(*string) = "000000000001"
-					*dest[5].(*string) = "8000"
+					scanString(dest[0], "imsi-001010000000001")
+					scanString(dest[1], "UNSUPPORTED_METHOD")
+					scanBytes(dest[2], bytes.Repeat([]byte{0x01}, 16))
+					scanBytes(dest[3], bytes.Repeat([]byte{0x02}, 16))
+					scanString(dest[4], "000000000001")
+					scanString(dest[5], "8000")
 					return nil
 				},
 			}
@@ -268,12 +282,12 @@ func TestGenerateAuthData_InvalidSQN(t *testing.T) {
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{
 				scanFn: func(dest ...any) error {
-					*dest[0].(*string) = "imsi-001010000000001"
-					*dest[1].(*string) = "5G_AKA"
-					*dest[2].(*[]byte) = bytes.Repeat([]byte{0x01}, 16)
-					*dest[3].(*[]byte) = bytes.Repeat([]byte{0x02}, 16)
-					*dest[4].(*string) = "ZZZZ" // invalid hex
-					*dest[5].(*string) = "8000"
+					scanString(dest[0], "imsi-001010000000001")
+					scanString(dest[1], "5G_AKA")
+					scanBytes(dest[2], bytes.Repeat([]byte{0x01}, 16))
+					scanBytes(dest[3], bytes.Repeat([]byte{0x02}, 16))
+					scanString(dest[4], "ZZZZ") // invalid hex
+					scanString(dest[5], "8000")
 					return nil
 				},
 			}
@@ -292,12 +306,12 @@ func TestGenerateAuthData_InvalidAMF(t *testing.T) {
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{
 				scanFn: func(dest ...any) error {
-					*dest[0].(*string) = "imsi-001010000000001"
-					*dest[1].(*string) = "5G_AKA"
-					*dest[2].(*[]byte) = bytes.Repeat([]byte{0x01}, 16)
-					*dest[3].(*[]byte) = bytes.Repeat([]byte{0x02}, 16)
-					*dest[4].(*string) = "000000000001"
-					*dest[5].(*string) = "ZZZZ" // invalid hex
+					scanString(dest[0], "imsi-001010000000001")
+					scanString(dest[1], "5G_AKA")
+					scanBytes(dest[2], bytes.Repeat([]byte{0x01}, 16))
+					scanBytes(dest[3], bytes.Repeat([]byte{0x02}, 16))
+					scanString(dest[4], "000000000001")
+					scanString(dest[5], "ZZZZ") // invalid hex
 					return nil
 				},
 			}

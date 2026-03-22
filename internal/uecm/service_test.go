@@ -100,6 +100,34 @@ func (r *mockRows) Conn() *pgx.Conn                              { return nil }
 // Assertion helpers
 // ---------------------------------------------------------------------------
 
+// scanString safely assigns a string to a scan destination.
+func scanString(dest any, val string) {
+	if p, ok := dest.(*string); ok {
+		*p = val
+	}
+}
+
+// scanBool safely assigns a bool to a scan destination.
+func scanBool(dest any, val bool) {
+	if p, ok := dest.(*bool); ok {
+		*p = val
+	}
+}
+
+// scanJSON safely assigns a json.RawMessage to a scan destination.
+func scanJSON(dest any, val json.RawMessage) {
+	if p, ok := dest.(*json.RawMessage); ok {
+		*p = val
+	}
+}
+
+// scanInt safely assigns an int to a scan destination.
+func scanInt(dest any, val int) {
+	if p, ok := dest.(*int); ok {
+		*p = val
+	}
+}
+
 // assertProblemStatus asserts that err is a *ProblemDetails with the given HTTP status.
 func assertProblemStatus(t *testing.T, err error, wantStatus int) {
 	t.Helper()
@@ -195,7 +223,7 @@ func TestRegister3GppAccess_Success_Created(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = false // existed=false → created=true
+				scanBool(dest[0], false) // existed=false → created=true
 				return nil
 			}}
 		},
@@ -222,7 +250,7 @@ func TestRegister3GppAccess_Success_Updated(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = true // existed=true → created=false
+				scanBool(dest[0], true) // existed=true → created=false
 				return nil
 			}}
 		},
@@ -321,13 +349,13 @@ func TestGet3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "amf-001"
-				*dest[1].(*string) = "https://amf/dereg"
-				*dest[2].(*json.RawMessage) = json.RawMessage(`{}`)
-				*dest[3].(*string) = "NR"
-				*dest[4].(*bool) = true
-				*dest[5].(*string) = "imei-123456789012345"
-				*dest[6].(*string) = "2024-01-01T00:00:00Z"
+				scanString(dest[0], "amf-001")
+				scanString(dest[1], "https://amf/dereg")
+				scanJSON(dest[2], json.RawMessage(`{}`))
+				scanString(dest[3], "NR")
+				scanBool(dest[4], true)
+				scanString(dest[5], "imei-123456789012345")
+				scanString(dest[6], "2024-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -374,7 +402,7 @@ func TestUpdate3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "amf-001"
+				scanString(dest[0], "amf-001")
 				return nil
 			}}
 		},
@@ -505,7 +533,7 @@ func TestRegisterNon3GppAccess_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = false
+				scanBool(dest[0], false)
 				return nil
 			}}
 		},
@@ -550,13 +578,13 @@ func TestGetNon3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "amf-002"
-				*dest[1].(*string) = "https://amf/dereg"
-				*dest[2].(*json.RawMessage) = json.RawMessage(`{}`)
-				*dest[3].(*string) = "NR"
-				*dest[4].(*bool) = false
-				*dest[5].(*string) = ""
-				*dest[6].(*string) = "2024-01-01T00:00:00Z"
+				scanString(dest[0], "amf-002")
+				scanString(dest[1], "https://amf/dereg")
+				scanJSON(dest[2], json.RawMessage(`{}`))
+				scanString(dest[3], "NR")
+				scanBool(dest[4], false)
+				scanString(dest[5], "")
+				scanString(dest[6], "2024-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -597,7 +625,7 @@ func TestUpdateNon3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "amf-002"
+				scanString(dest[0], "amf-002")
 				return nil
 			}}
 		},
@@ -640,7 +668,7 @@ func TestRegisterSmf_Success_Created(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = false
+				scanBool(dest[0], false)
 				return nil
 			}}
 		},
@@ -684,12 +712,12 @@ func TestGetSmfRegistration_Success(t *testing.T) {
 			return &mockRows{
 				data: []func(dest ...any) error{
 					func(dest ...any) error {
-						*dest[0].(*string) = "smf-001"
-						*dest[1].(*int) = 5
-						*dest[2].(*string) = "internet"
-						*dest[3].(*json.RawMessage) = json.RawMessage(`{"sst":1}`)
-						*dest[4].(*json.RawMessage) = json.RawMessage(`{"mcc":"001","mnc":"01"}`)
-						*dest[5].(*string) = "2024-01-01T00:00:00Z"
+						scanString(dest[0], "smf-001")
+						scanInt(dest[1], 5)
+						scanString(dest[2], "internet")
+						scanJSON(dest[3], json.RawMessage(`{"sst":1}`))
+						scanJSON(dest[4], json.RawMessage(`{"mcc":"001","mnc":"01"}`))
+						scanString(dest[5], "2024-01-01T00:00:00Z")
 						return nil
 					},
 				},
@@ -751,12 +779,12 @@ func TestRetrieveSmfRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smf-001"
-				*dest[1].(*int) = 5
-				*dest[2].(*string) = "internet"
-				*dest[3].(*json.RawMessage) = json.RawMessage(`{"sst":1}`)
-				*dest[4].(*json.RawMessage) = json.RawMessage(`{"mcc":"001","mnc":"01"}`)
-				*dest[5].(*string) = "2024-01-01T00:00:00Z"
+				scanString(dest[0], "smf-001")
+				scanInt(dest[1], 5)
+				scanString(dest[2], "internet")
+				scanJSON(dest[3], json.RawMessage(`{"sst":1}`))
+				scanJSON(dest[4], json.RawMessage(`{"mcc":"001","mnc":"01"}`))
+				scanString(dest[5], "2024-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -830,7 +858,7 @@ func TestUpdateSmfRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smf-001"
+				scanString(dest[0], "smf-001")
 				return nil
 			}}
 		},
@@ -876,7 +904,7 @@ func TestRegisterSmsf3Gpp_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = false
+				scanBool(dest[0], false)
 				return nil
 			}}
 		},
@@ -904,9 +932,9 @@ func TestGetSmsf3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smsf-001"
-				*dest[1].(*json.RawMessage) = json.RawMessage(`{"mcc":"001","mnc":"01"}`)
-				*dest[2].(*string) = "2024-01-01T00:00:00Z"
+				scanString(dest[0], "smsf-001")
+				scanJSON(dest[1], json.RawMessage(`{"mcc":"001","mnc":"01"}`))
+				scanString(dest[2], "2024-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -980,7 +1008,7 @@ func TestUpdateSmsf3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smsf-001"
+				scanString(dest[0], "smsf-001")
 				return nil
 			}}
 		},
@@ -1005,7 +1033,7 @@ func TestRegisterSmsfNon3Gpp_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*bool) = false
+				scanBool(dest[0], false)
 				return nil
 			}}
 		},
@@ -1033,9 +1061,9 @@ func TestGetSmsfNon3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smsf-002"
-				*dest[1].(*json.RawMessage) = json.RawMessage(`{"mcc":"001","mnc":"01"}`)
-				*dest[2].(*string) = "2024-01-01T00:00:00Z"
+				scanString(dest[0], "smsf-002")
+				scanJSON(dest[1], json.RawMessage(`{"mcc":"001","mnc":"01"}`))
+				scanString(dest[2], "2024-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -1094,7 +1122,7 @@ func TestUpdateSmsfNon3GppRegistration_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smsf-002"
+				scanString(dest[0], "smsf-002")
 				return nil
 			}}
 		},
@@ -1158,13 +1186,13 @@ func TestGetRegistrations_WithData(t *testing.T) {
 			switch callNum {
 			case 1: // Get3GppRegistration (7 fields)
 				return &mockRow{scanFn: func(dest ...any) error {
-					*dest[0].(*string) = "amf-001"
-					*dest[1].(*string) = "https://amf/dereg"
-					*dest[2].(*json.RawMessage) = json.RawMessage(`{}`)
-					*dest[3].(*string) = "NR"
-					*dest[4].(*bool) = true
-					*dest[5].(*string) = ""
-					*dest[6].(*string) = "2024-01-01T00:00:00Z"
+					scanString(dest[0], "amf-001")
+					scanString(dest[1], "https://amf/dereg")
+					scanJSON(dest[2], json.RawMessage(`{}`))
+					scanString(dest[3], "NR")
+					scanBool(dest[4], true)
+					scanString(dest[5], "")
+					scanString(dest[6], "2024-01-01T00:00:00Z")
 					return nil
 				}}
 			case 2: // GetNon3GppRegistration (7 fields)
@@ -1329,7 +1357,7 @@ func TestSendRoutingInfoSm_Success(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(dest ...any) error {
-				*dest[0].(*string) = "smsf-001"
+				scanString(dest[0], "smsf-001")
 				return nil
 			}}
 		},
