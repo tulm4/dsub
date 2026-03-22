@@ -495,9 +495,14 @@ func (s *Service) resolveGPSItoSUPI(ctx context.Context, gpsi string) (string, e
 	)
 	var supi string
 	if err := row.Scan(&supi); err != nil {
-		return "", errors.NewNotFound(
-			fmt.Sprintf("sdm: subscriber not found for GPSI: %s", gpsi),
-			errors.CauseUserNotFound,
+		if err == pgx.ErrNoRows {
+			return "", errors.NewNotFound(
+				fmt.Sprintf("sdm: subscriber not found for GPSI: %s", gpsi),
+				errors.CauseUserNotFound,
+			)
+		}
+		return "", errors.NewInternalError(
+			fmt.Sprintf("sdm: failed to resolve GPSI %s: %s", gpsi, err),
 		)
 	}
 	return supi, nil
