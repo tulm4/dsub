@@ -315,9 +315,9 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 5 |
 | **Name** | Medium-Traffic Services |
-| **Status** | NOT_STARTED |
-| **Progress** | 0% |
-| **Last Updated** | 2026-03-21 |
+| **Status** | IN_PROGRESS |
+| **Progress** | 70% |
+| **Last Updated** | 2026-03-22 |
 | **Owner** | — |
 
 **Description**: Implement the three medium-traffic Nudm microservices for event exposure, parameter provisioning, and mobile-terminated service routing.
@@ -337,12 +337,14 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - `cmd/udm-mt/` + `internal/mt/` — UE info query, location provisioning
 
 **Deliverables**:
-- [ ] **udm-ee**: Event subscription CRUD, 10+ event types (reachability, location, connectivity, etc.), callback dispatch via udm-notify
-- [ ] **udm-pp**: Per-UE parameter PATCH, 5G VN group CRUD, MBS group membership, change propagation to SDM subscribers
-- [ ] **udm-mt**: UE info query (serving AMF, user state), location provisioning
+- [x] **udm-ee**: Event subscription CRUD (Create, Update, Delete), handler + service + types + unit tests
+- [x] **udm-pp**: Per-UE parameter GET/PATCH with UPSERT, 501 stubs for 5G VN group and MBS endpoints, handler + service + types + unit tests
+- [x] **udm-mt**: UE info query (serving AMF, user state, rat type), location provisioning, handler + service + types + unit tests
 - [ ] Integration between EE ↔ UECM (event triggers from registration changes)
 - [ ] Integration between PP → SDM (change notifications after parameter updates)
-- [ ] Unit tests, integration tests, API conformance tests
+- [ ] 5G VN group CRUD, MBS group membership (PP advanced features, requires new migrations)
+- [x] Unit tests for all three services (EE: 39 tests, PP: 24 tests, MT: 20 tests)
+- [ ] Integration tests, API conformance tests
 
 **Dependencies**: Phase 1, Phase 2, Phase 3 (notify, UECM event triggers, SDM change subscriptions)
 
@@ -764,7 +766,7 @@ Phase 1 (Foundation)
 | 2 | Database Schema & Data Model | DONE | 100% | 2026-03-21 | Phase 1 |
 | 3 | Core High-Traffic Services (UEAU, SDM, UECM) | DONE | 100% | 2026-03-22 | Phase 1, 2 |
 | 4 | SUCI De-concealment & NRF Integration | DONE | 100% | 2026-03-22 | Phase 1, 3 |
-| 5 | Medium-Traffic Services (EE, PP, MT) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 3 |
+| 5 | Medium-Traffic Services (EE, PP, MT) | IN_PROGRESS | 70% | 2026-03-22 | Phase 1, 2, 3 |
 | 6 | Low-Traffic Services (SSAU, NIDDAU, RSDS) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 5 |
 | 7 | Security Hardening | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3, 4 |
 | 8 | Observability & Monitoring | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3–6 |
