@@ -35,7 +35,10 @@ func (m *MemoryCache) Get(key string) ([]byte, bool) {
 	if !ok {
 		return nil, false
 	}
-	e := v.(*entry)
+	e, ok := v.(*entry)
+	if !ok {
+		return nil, false
+	}
 	if time.Now().After(e.expiresAt) {
 		m.data.Delete(key)
 		return nil, false

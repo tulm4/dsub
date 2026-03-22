@@ -26,8 +26,8 @@ func TestStartupProbe(t *testing.T) {
 			wantStatus: "ready",
 		},
 		{
-			name: "no checks registered",
-			checks: map[string]Checker{},
+			name:       "no checks registered",
+			checks:     map[string]Checker{},
 			wantCode:   http.StatusOK,
 			wantStatus: "ready",
 		},
@@ -58,7 +58,7 @@ func TestStartupProbe(t *testing.T) {
 				h.AddStartupCheck(name, check)
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/healthz/startup", nil)
+			req := httptest.NewRequest(http.MethodGet, "/healthz/startup", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
@@ -103,9 +103,9 @@ func TestReadinessProbe(t *testing.T) {
 			wantStatus: "ready",
 		},
 		{
-			name:  "ready with no checks",
-			ready: true,
-			checks: map[string]Checker{},
+			name:       "ready with no checks",
+			ready:      true,
+			checks:     map[string]Checker{},
 			wantCode:   http.StatusOK,
 			wantStatus: "ready",
 		},
@@ -137,7 +137,7 @@ func TestReadinessProbe(t *testing.T) {
 				h.AddReadinessCheck(name, check)
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/healthz/ready", nil)
+			req := httptest.NewRequest(http.MethodGet, "/healthz/ready", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
@@ -201,7 +201,7 @@ func TestLivenessProbe(t *testing.T) {
 				h.AddLivenessCheck(name, check)
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/healthz/live", nil)
+			req := httptest.NewRequest(http.MethodGet, "/healthz/live", http.NoBody)
 			rec := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
@@ -243,7 +243,7 @@ func TestRegisterRoutes(t *testing.T) {
 
 	for _, ep := range endpoints {
 		t.Run(ep.path, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, ep.path, nil)
+			req := httptest.NewRequest(http.MethodGet, ep.path, http.NoBody)
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
 
@@ -264,7 +264,7 @@ func TestStartupCheckResults(t *testing.T) {
 	h.AddStartupCheck("db", func(ctx context.Context) error { return nil })
 	h.AddStartupCheck("cache", func(ctx context.Context) error { return errors.New("timeout") })
 
-	req := httptest.NewRequest(http.MethodGet, "/healthz/startup", nil)
+	req := httptest.NewRequest(http.MethodGet, "/healthz/startup", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	mux := http.NewServeMux()

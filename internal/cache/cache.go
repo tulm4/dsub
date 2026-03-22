@@ -3,10 +3,10 @@
 //
 // Cache lookup sequence:
 //
-//	1. Try L1 (in-memory) → hit → return
-//	2. Try L2 (Redis) → hit → populate L1 & return
-//	3. Return miss (caller queries database, then calls Set)
-//	4. On write: invalidate L2 (DEL), then L1
+//  1. Try L1 (in-memory) → hit → return
+//  2. Try L2 (Redis) → hit → populate L1 & return
+//  3. Return miss (caller queries database, then calls Set)
+//  4. On write: invalidate L2 (DEL), then L1
 package cache
 
 import (

@@ -69,7 +69,7 @@ func WithTx(ctx context.Context, pool *pgxpool.Pool, opts TxOptions, fn func(tx 
 
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("db: tx retry cancelled: %w", ctx.Err())
+				return fmt.Errorf("db: tx retry canceled: %w", ctx.Err())
 			case <-time.After(delay):
 			}
 		}

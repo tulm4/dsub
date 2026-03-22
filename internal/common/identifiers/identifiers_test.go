@@ -47,12 +47,12 @@ func TestValidateSUPI(t *testing.T) {
 
 func TestParseSUPI(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
-		wantMCC         string
-		wantMNC         string
-		wantMSIN        string
-		wantErr         bool
+		name     string
+		input    string
+		wantMCC  string
+		wantMNC  string
+		wantMSIN string
+		wantErr  bool
 	}{
 		{
 			name:    "15-digit IMSI (greedy: 3-digit MNC, 9-digit MSIN)",
