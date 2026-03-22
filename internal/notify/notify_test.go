@@ -730,7 +730,7 @@ func TestSend_ErrorMessageContainsURI(t *testing.T) {
 	}
 
 	errMsg := fmt.Sprintf("%v", res.Error)
-	if len(errMsg) == 0 {
+	if errMsg == "" {
 		t.Error("error message should not be empty")
 	}
 }

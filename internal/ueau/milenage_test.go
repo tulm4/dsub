@@ -28,11 +28,11 @@ func TestMilenageTestSet1(t *testing.T) {
 	amf := mustDecode(t, "b9b9")
 
 	// Expected outputs from TS 35.207 §4.3 Test Set 1
-	expectedF1 := "4a9ffac354dfafb3"  // MAC-A
-	expectedF2 := "a54211d5e3ba50bf"  // XRES
+	expectedF1 := "4a9ffac354dfafb3"                 // MAC-A
+	expectedF2 := "a54211d5e3ba50bf"                 // XRES
 	expectedF3 := "b40ba9a3c58b2a05bbf0d987b21bf8cb" // CK
 	expectedF4 := "f769bcd751044604127672711c6d3441" // IK
-	expectedF5 := "aa689c648370"      // AK
+	expectedF5 := "aa689c648370"                     // AK
 
 	// First compute OPc from K and OP
 	opc, err := ComputeOPc(k, op)

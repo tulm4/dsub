@@ -28,7 +28,8 @@ var (
 	c2 = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
 	c3 = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
 	c4 = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	c5 = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}
+	// c5 is used by f5* (SQN re-sync); reserved for future resynchronization support.
+	_ = [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}
 )
 
 // ComputeOPc derives OPc from K and OP per TS 35.206 §2.2:
@@ -216,7 +217,7 @@ func xorBytesThree(dst, a, b, c []byte) {
 // rotateLeft performs a bitwise left rotation of a 128-bit (16-byte) value by n bits.
 // Per TS 35.206, rotation is a cyclic left shift of the full 128-bit block.
 func rotateLeft(dst, src []byte, n int) {
-	n = n % 128
+	n %= 128
 	if n == 0 {
 		copy(dst, src)
 		return

@@ -33,7 +33,7 @@ func DeriveXResStar(ck, ik []byte, servingNetworkName string, rand, xres []byte)
 
 	snBytes := []byte(servingNetworkName)
 
-	// S = FC || P0 || L0 || P1 || L1 || P2 || L2
+	// Build KDF input S: FC, serving network name, RAND, XRES with length prefixes.
 	s := make([]byte, 0, 1+len(snBytes)+2+len(rand)+2+len(xres)+2)
 	s = append(s, 0x6B) // FC
 	s = append(s, snBytes...)
@@ -65,7 +65,7 @@ func DeriveKausf(ck, ik []byte, servingNetworkName string, sqnXorAK []byte) []by
 
 	snBytes := []byte(servingNetworkName)
 
-	// S = FC || P0 || L0 || P1 || L1
+	// Build KDF input S: FC, serving network name, SQN⊕AK with length prefixes.
 	s := make([]byte, 0, 1+len(snBytes)+2+len(sqnXorAK)+2)
 	s = append(s, 0x6A) // FC
 	s = append(s, snBytes...)
