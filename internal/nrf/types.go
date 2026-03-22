@@ -20,7 +20,7 @@ type NFProfile struct {
 	IPV4Addresses []string `json:"ipv4Addresses,omitempty"`
 	Capacity      int      `json:"capacity,omitempty"`
 	Load          int      `json:"load,omitempty"`
-	HeartBeatTimer int     `json:"heartBeatTimer,omitempty"`
+	HeartbeatTimer int     `json:"heartBeatTimer,omitempty"`
 }
 
 // PLMNID identifies a Public Land Mobile Network.

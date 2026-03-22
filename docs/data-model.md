@@ -898,6 +898,45 @@ COMMENT ON TABLE udm.audit_log IS
 
 ---
 
+### 3.24 suci_profiles — SUCI De-concealment Key Profiles
+
+```sql
+-- Phase 4: SUCI de-concealment home network key profiles
+-- Based on: docs/security.md §4.3 (Home Network Key Management)
+-- 3GPP: TS 33.501 §6.12 — SUCI de-concealment, ECIES Profile A and B
+
+CREATE TABLE udm.suci_profiles (
+    hn_key_id       INTEGER         NOT NULL CHECK (hn_key_id >= 0 AND hn_key_id <= 255),
+    profile_type    TEXT            NOT NULL CHECK (profile_type IN ('A', 'B')),
+    public_key      BYTEA           NOT NULL,
+    hsm_key_ref     TEXT            NOT NULL,
+    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (hn_key_id)
+);
+```
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `hn_key_id` | `INTEGER` | Home Network Public Key Identifier (0–255 per TS 23.003) |
+| `profile_type` | `TEXT` | ECIES profile: `'A'` (X25519) or `'B'` (secp256r1) |
+| `public_key` | `BYTEA` | Raw public key bytes (32 bytes Profile A, 33 bytes compressed Profile B) |
+| `hsm_key_ref` | `TEXT` | HSM key reference/handle — private key never leaves HSM boundary (docs/security.md §4.3) |
+| `is_active` | `BOOLEAN` | Whether this key is currently active for de-concealment |
+| `created_at` | `TIMESTAMPTZ` | Key creation timestamp |
+| `expires_at` | `TIMESTAMPTZ` | Optional key expiration timestamp for rotation |
+| `updated_at` | `TIMESTAMPTZ` | Last modification timestamp |
+
+**Design notes:**
+- **No FK to subscribers** — this is infrastructure configuration, not per-subscriber data
+- **No SPLIT INTO** — small table (few rows, not subscriber-partitioned)
+- **HSM key reference** — per `docs/security.md` §4.3/§4.4, private key material must not be stored in the database or loaded into application memory. The `hsm_key_ref` column stores an HSM handle/identifier used by the UEID service to delegate ECIES de-concealment to the HSM boundary
+
+---
+
 ## 4. Indexing Strategy
 
 ### 4.1 Primary Indexes

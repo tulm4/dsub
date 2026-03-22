@@ -226,7 +226,7 @@ func TestGetAccessToken(t *testing.T) {
 	c := NewClient(cfg)
 
 	// First call should hit the server
-	token, err := c.GetAccessToken(context.Background(), "nudm-sdm")
+	token, err := c.GetAccessToken(context.Background(), "AUSF", "nudm-sdm")
 	if err != nil {
 		t.Fatalf("GetAccessToken: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestGetAccessToken(t *testing.T) {
 	}
 
 	// Second call should use cache
-	token2, err := c.GetAccessToken(context.Background(), "nudm-sdm")
+	token2, err := c.GetAccessToken(context.Background(), "AUSF", "nudm-sdm")
 	if err != nil {
 		t.Fatalf("GetAccessToken (cached): %v", err)
 	}
@@ -260,7 +260,7 @@ func TestGetAccessToken_ServerError(t *testing.T) {
 	cfg.NFProfile = NFProfile{NFInstanceID: "test-nf-001", NFType: "UDM"}
 
 	c := NewClient(cfg)
-	_, err := c.GetAccessToken(context.Background(), "nudm-sdm")
+	_, err := c.GetAccessToken(context.Background(), "AUSF", "nudm-sdm")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
