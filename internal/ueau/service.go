@@ -26,16 +26,45 @@ type DB interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+// SUCIResolver resolves a SUCI to a SUPI via the udm-ueid service.
+// When nil, SUCI de-concealment is not available and requests with SUCI
+// identifiers return 501 Not Implemented.
+//
+// Based on: docs/service-decomposition.md §2.10 (udm-ueid)
+// 3GPP: TS 33.501 §6.12 — SUCI de-concealment
+type SUCIResolver interface {
+	ResolveSUCI(ctx context.Context, suci string) (supi string, err error)
+}
+
 // Service implements the Nudm_UEAU business logic.
 //
 // Based on: docs/service-decomposition.md §2.1
 type Service struct {
-	db DB
+	db           DB
+	suciResolver SUCIResolver
 }
 
 // NewService creates a new UEAU service with the given database dependency.
-func NewService(db DB) *Service {
-	return &Service{db: db}
+// opts may contain a SUCIResolver for SUCI de-concealment support (Phase 4).
+func NewService(db DB, opts ...ServiceOption) *Service {
+	s := &Service{db: db}
+	for _, o := range opts {
+		o(s)
+	}
+	return s
+}
+
+// ServiceOption configures optional dependencies on the UEAU Service.
+type ServiceOption func(*Service)
+
+// WithSUCIResolver attaches a SUCI resolver to the UEAU service,
+// enabling SUCI-based authentication requests.
+//
+// Based on: docs/service-decomposition.md §2.1, §2.10
+func WithSUCIResolver(resolver SUCIResolver) ServiceOption {
+	return func(s *Service) {
+		s.suciResolver = resolver
+	}
 }
 
 // authCredentials holds subscriber authentication credentials read from the DB.
@@ -64,15 +93,24 @@ func (s *Service) GenerateAuthData(ctx context.Context, supiOrSuci string, req *
 		return nil, errors.NewBadRequest("servingNetworkName is required", errors.CauseMandatoryIEMissing)
 	}
 
-	// Resolve identifier: if SUCI, we need to de-conceal to get SUPI.
-	// For now, SUCI de-concealment is handled by the udm-ueid service (Phase 4).
-	// Only SUPI identifiers are supported in this phase.
+	// Resolve identifier: if SUCI, use the udm-ueid service for de-concealment.
+	// If no SUCI resolver is configured, return 501 Not Implemented.
+	//
+	// Based on: docs/sequence-diagrams.md §2 (SUCI resolution in registration flow)
+	// 3GPP: TS 33.501 §6.12 — SUCI de-concealment
 	var supi string
 	if identifiers.IsSUCI(supiOrSuci) {
-		return nil, errors.NewNotImplemented("SUCI de-concealment not yet implemented")
+		if s.suciResolver == nil {
+			return nil, errors.NewNotImplemented("SUCI de-concealment not yet configured")
+		}
+		resolved, resolveErr := s.suciResolver.ResolveSUCI(ctx, supiOrSuci)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		supi = resolved
+	} else {
+		supi = supiOrSuci
 	}
-
-	supi = supiOrSuci
 	if err := identifiers.ValidateSUPI(supi); err != nil {
 		return nil, errors.NewBadRequest(
 			fmt.Sprintf("invalid SUPI: %s", err),

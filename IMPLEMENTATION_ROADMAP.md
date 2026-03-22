@@ -5,7 +5,7 @@
 | **Version** | 1.0.0 |
 | **Status** | Active |
 | **Classification** | Internal — Engineering |
-| **Last Updated** | 2026-03-21 |
+| **Last Updated** | 2026-03-22 |
 
 ---
 
@@ -262,9 +262,9 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 4 |
 | **Name** | SUCI De-concealment & NRF Integration |
-| **Status** | NOT_STARTED |
-| **Progress** | 0% |
-| **Last Updated** | 2026-03-21 |
+| **Status** | DONE |
+| **Progress** | 100% |
+| **Last Updated** | 2026-03-22 |
 | **Owner** | — |
 
 **Description**: Implement the UEID service for SUCI de-concealment (ECIES Profile A/B) and the NRF client library for service registration, discovery, heartbeat, and OAuth2 token acquisition.
@@ -285,13 +285,21 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - Integration with `udm-ueau` for SUCI resolution during authentication
 
 **Deliverables**:
-- [ ] **udm-ueid**: SUCI de-concealment with ECIES Profile A (Curve25519/X25519) and Profile B (secp256r1)
-- [ ] Key management for HPLMN public/private key pairs with rotation support
-- [ ] `internal/nrf` — NF registration on startup, periodic heartbeat, graceful deregistration
-- [ ] NF discovery client with local caching
-- [ ] OAuth2 token acquisition and caching from NRF
-- [ ] Integration of UEID with UEAU for SUCI-based auth requests
-- [ ] Unit and integration tests, ECIES test vector validation
+- [x] **udm-ueid**: SUCI de-concealment with ECIES Profile A (Curve25519/X25519) and Profile B (secp256r1)
+- [x] Key management for HPLMN public/private key pairs with rotation support
+- [x] `internal/nrf` — NF registration on startup, periodic heartbeat, graceful deregistration
+- [x] NF discovery client with local caching
+- [x] OAuth2 token acquisition and caching from NRF
+- [x] Integration of UEID with UEAU for SUCI-based auth requests
+- [x] Unit and integration tests, ECIES test vector validation
+
+**Completion Notes**:
+- `internal/ueid/`: handler.go, service.go, types.go, ecies.go with full ECIES Profile A/B
+- `internal/nrf/`: client.go (register, heartbeat, discover, deregister), oauth2.go, types.go
+- `cmd/udm-ueid/main.go`: service entry point skeleton
+- `migrations/000027_create_suci_profiles.up.sql`: HPLMN key pair storage
+- UEAU service updated with `SUCIResolver` interface and `WithSUCIResolver` option
+- 37 new unit tests across ueid and nrf packages (all passing)
 
 **Dependencies**: Phase 1, Phase 3 (UEAU integration)
 
@@ -755,7 +763,7 @@ Phase 1 (Foundation)
 | 1 | Foundation & Shared Libraries | DONE | 100% | 2026-03-21 | None |
 | 2 | Database Schema & Data Model | DONE | 100% | 2026-03-21 | Phase 1 |
 | 3 | Core High-Traffic Services (UEAU, SDM, UECM) | DONE | 100% | 2026-03-22 | Phase 1, 2 |
-| 4 | SUCI De-concealment & NRF Integration | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3 |
+| 4 | SUCI De-concealment & NRF Integration | DONE | 100% | 2026-03-22 | Phase 1, 3 |
 | 5 | Medium-Traffic Services (EE, PP, MT) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 3 |
 | 6 | Low-Traffic Services (SSAU, NIDDAU, RSDS) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 5 |
 | 7 | Security Hardening | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3, 4 |

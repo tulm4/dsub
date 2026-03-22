@@ -392,7 +392,7 @@ func TestIntegrationMigrationVersionTracking(t *testing.T) {
 	// Apply all migrations (skipping tablespace)
 	applyMigrations(t, runner, migrations, ctx)
 
-	// Verify version tracking count (26 total - 1 skipped = 25)
+	// Verify version tracking count (27 total - 1 skipped = 26)
 	applied, err := runner.GetAppliedVersions(ctx)
 	if err != nil {
 		t.Fatalf("GetAppliedVersions error: %v", err)
@@ -402,11 +402,17 @@ func TestIntegrationMigrationVersionTracking(t *testing.T) {
 		t.Errorf("applied count = %d, want %d", len(applied), expectedApplied)
 	}
 
-	// Verify versions are sequential (1..25, skipped 26)
+	// Verify versions are sequential (1..25, skipped 26, then 27)
+	expectedVersions := make([]int, 0, expectedApplied)
+	for v := 1; v <= len(migrations); v++ {
+		if v == 26 {
+			continue // tablespace migration skipped
+		}
+		expectedVersions = append(expectedVersions, v)
+	}
 	for i, v := range applied {
-		wantVersion := i + 1
-		if v != wantVersion {
-			t.Errorf("applied[%d] = %d, want %d", i, v, wantVersion)
+		if i < len(expectedVersions) && v != expectedVersions[i] {
+			t.Errorf("applied[%d] = %d, want %d", i, v, expectedVersions[i])
 		}
 	}
 }

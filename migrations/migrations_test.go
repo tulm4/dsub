@@ -24,13 +24,14 @@ func TestEmbeddedMigrationsParseable(t *testing.T) {
 		t.Fatalf("ParseMigrations(FS) error = %v", err)
 	}
 
-	// Phase 2 delivers 26 migration files (000001–000026)
-	const expectedCount = 26
+	// Phase 2 delivers 26 migration files (000001–000026),
+	// Phase 4 adds migration 000027 for SUCI profiles.
+	const expectedCount = 27
 	if len(migrations) != expectedCount {
 		t.Fatalf("expected %d migrations, got %d", expectedCount, len(migrations))
 	}
 
-	// Verify sequential ordering (versions 1..26)
+	// Verify sequential ordering (versions 1..27)
 	for i, m := range migrations {
 		wantVersion := i + 1
 		if m.Version != wantVersion {
@@ -106,6 +107,7 @@ func TestMigrationExpectedNames(t *testing.T) {
 		{24, "create_audit_log"},
 		{25, "create_indexes"},
 		{26, "create_tablespaces"},
+		{27, "create_suci_profiles"},
 	}
 
 	if len(migrations) != len(expected) {
