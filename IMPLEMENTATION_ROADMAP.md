@@ -242,7 +242,7 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - [x] **udm-ueau**: Auth vector generation (5G-AKA, EAP-AKA'), auth confirmation, SQN management, HSS interworking, GBA vectors
 - [x] **udm-sdm**: All 38 data retrieval endpoints, SDM change subscriptions, shared data, identity translation (GPSI↔SUPI)
 - [x] **udm-uecm**: AMF/SMF/SMSF registration and deregistration, PEI updates, SMS routing, roaming info updates
-- [x] `internal/notify` — Callback engine with retry, circuit breaker, batch delivery, DLQ
+- [x] `internal/notify` — Callback engine with retry, circuit breaker, batch delivery
 - [x] Unit tests (≥80% coverage per service)
 - [x] Integration tests against YugabyteDB for all three services
 - [x] API conformance tests validating against 3GPP OpenAPI YAML specs

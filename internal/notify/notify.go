@@ -116,16 +116,29 @@ type Notifier struct {
 }
 
 // New creates a Notifier with the supplied configuration.
+// Zero-valued sub-configs are replaced with documented defaults to avoid
+// unexpected behavior (e.g. FailureThreshold=0 tripping the breaker
+// immediately, or MaxRetries=0 disabling retries).
 func New(cfg NotifierConfig) *Notifier {
 	client := cfg.HTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}
 
+	retryCfg := cfg.Retry
+	if retryCfg == (RetryConfig{}) {
+		retryCfg = DefaultRetryConfig()
+	}
+
+	cbCfg := cfg.CircuitBreaker
+	if cbCfg == (CircuitBreakerConfig{}) {
+		cbCfg = DefaultCircuitBreakerConfig()
+	}
+
 	return &Notifier{
 		client:   client,
-		retry:    cfg.Retry,
-		cbCfg:    cfg.CircuitBreaker,
+		retry:    retryCfg,
+		cbCfg:    cbCfg,
 		breakers: make(map[string]*circuitBreaker),
 		randFn:   rand.Float64,
 	}
