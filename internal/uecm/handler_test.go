@@ -694,3 +694,1158 @@ func assertProblemDetailsContentType(t *testing.T, w *httptest.ResponseRecorder)
 		t.Errorf("Content-Type: got %q, want %q", ct, expected)
 	}
 }
+
+// --- Additional handler tests for coverage ---
+
+func TestHandleUpdate3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		update3GppRegistrationFn: func(_ context.Context, ueID string, patch *Amf3GppAccessRegistration) (*Amf3GppAccessRegistration, error) {
+			patch.AmfInstanceID = "amf-001"
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result Amf3GppAccessRegistration
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AmfInstanceID != "amf-001" {
+		t.Errorf("expected amfInstanceId amf-001, got %s", result.AmfInstanceID)
+	}
+}
+
+func TestHandlePeiUpdate_Success(t *testing.T) {
+	svc := &mockService{
+		peiUpdateFn: func(_ context.Context, ueID string, info *PeiUpdateInfo) error {
+			if ueID != "imsi-001010000000001" {
+				t.Errorf("unexpected ueID: %s", ueID)
+			}
+			if info.Pei != "imei-123456789012345" {
+				t.Errorf("unexpected pei: %s", info.Pei)
+			}
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/pei-update",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateRoamingInformation_Success(t *testing.T) {
+	svc := &mockService{
+		updateRoamingInformationFn: func(_ context.Context, ueID string, info *RoamingInfoUpdate) error {
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"roaming":true}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/roaming-info-update",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterNon3GppAccess_Success(t *testing.T) {
+	svc := &mockService{
+		registerNon3GppAccessFn: func(_ context.Context, ueID string, reg *AmfNon3GppAccessRegistration) (*AmfNon3GppAccessRegistration, bool, error) {
+			return reg, true, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"amfInstanceId":"amf-002","deregCallbackUri":"https://amf2/dereg","guami":{},"ratType":"NR"}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetNon3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		getNon3GppRegistrationFn: func(_ context.Context, ueID string) (*AmfNon3GppAccessRegistration, error) {
+			return &AmfNon3GppAccessRegistration{
+				AmfInstanceID:    "amf-002",
+				DeregCallbackURI: "https://amf2/dereg",
+				RatType:          "NR",
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateNon3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		updateNon3GppRegistrationFn: func(_ context.Context, ueID string, patch *AmfNon3GppAccessRegistration) (*AmfNon3GppAccessRegistration, error) {
+			patch.AmfInstanceID = "amf-002"
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmfRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		getSmfRegistrationFn: func(_ context.Context, ueID string) ([]SmfRegistration, error) {
+			return []SmfRegistration{
+				{SmfInstanceID: "smf-001", PduSessionID: 5, Dnn: "internet"},
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRetrieveSmfRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		retrieveSmfRegistrationFn: func(_ context.Context, ueID string, pduSessionID int) (*SmfRegistration, error) {
+			return &SmfRegistration{SmfInstanceID: "smf-001", PduSessionID: pduSessionID, Dnn: "internet"}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmfRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		updateSmfRegistrationFn: func(_ context.Context, ueID string, pduSessionID int, patch *SmfRegistration) (*SmfRegistration, error) {
+			patch.SmfInstanceID = "smf-001"
+			patch.PduSessionID = pduSessionID
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"dnn":"ims"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterSmsf3Gpp_Success(t *testing.T) {
+	svc := &mockService{
+		registerSmsf3GppFn: func(_ context.Context, ueID string, reg *SmsfRegistration) (*SmsfRegistration, bool, error) {
+			return reg, false, nil // updated, not created
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"smsfInstanceId":"smsf-001","plmnId":{"mcc":"001","mnc":"01"}}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmsf3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		getSmsf3GppRegistrationFn: func(_ context.Context, ueID string) (*SmsfRegistration, error) {
+			return &SmsfRegistration{SmsfInstanceID: "smsf-001"}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmsf3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		updateSmsf3GppRegistrationFn: func(_ context.Context, ueID string, patch *SmsfRegistration) (*SmsfRegistration, error) {
+			patch.SmsfInstanceID = "smsf-001"
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"registrationTime":"2024-01-01T00:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDeregisterSmsf3Gpp_NoContent(t *testing.T) {
+	svc := &mockService{
+		deregisterSmsf3GppFn: func(_ context.Context, ueID string) error {
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterSmsfNon3Gpp_Success(t *testing.T) {
+	svc := &mockService{
+		registerSmsfNon3GppFn: func(_ context.Context, ueID string, reg *SmsfRegistration) (*SmsfRegistration, bool, error) {
+			return reg, true, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"smsfInstanceId":"smsf-002","plmnId":{"mcc":"001","mnc":"01"}}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected status 201, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmsfNon3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		getSmsfNon3GppRegistrationFn: func(_ context.Context, ueID string) (*SmsfRegistration, error) {
+			return &SmsfRegistration{SmsfInstanceID: "smsf-002"}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmsfNon3GppRegistration_Success(t *testing.T) {
+	svc := &mockService{
+		updateSmsfNon3GppRegFn: func(_ context.Context, ueID string, patch *SmsfRegistration) (*SmsfRegistration, error) {
+			patch.SmsfInstanceID = "smsf-002"
+			return patch, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"registrationTime":"2024-01-01T00:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDeregisterSmsfNon3Gpp_Success(t *testing.T) {
+	svc := &mockService{
+		deregisterSmsfNon3GppFn: func(_ context.Context, ueID string) error {
+			return nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected status 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetRegistrations_WithData(t *testing.T) {
+	svc := &mockService{
+		getRegistrationsFn: func(_ context.Context, ueID string) (*RegistrationDataSets, error) {
+			return &RegistrationDataSets{
+				Amf3GppAccess:    &Amf3GppAccessRegistration{AmfInstanceID: "amf-001"},
+				AmfNon3GppAccess: &AmfNon3GppAccessRegistration{AmfInstanceID: "amf-002"},
+				Smsf3GppAccess:   &SmsfRegistration{SmsfInstanceID: "smsf-001"},
+			}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result RegistrationDataSets
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.AmfNon3GppAccess == nil || result.AmfNon3GppAccess.AmfInstanceID != "amf-002" {
+		t.Errorf("expected amfNon3GppAccess with amf-002")
+	}
+}
+
+func TestHandleSendRoutingInfoSm_Success(t *testing.T) {
+	svc := &mockService{
+		sendRoutingInfoSmFn: func(_ context.Context, ueID string, req *RoutingInfoSmRequest) (*RoutingInfoSmResponse, error) {
+			return &RoutingInfoSmResponse{SmsfInstanceID: "smsf-001"}, nil
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"supportedFeatures":"A"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/send-routing-info-sm",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var result RoutingInfoSmResponse
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.SmsfInstanceID != "smsf-001" {
+		t.Errorf("expected smsfInstanceId smsf-001, got %s", result.SmsfInstanceID)
+	}
+}
+
+func TestHandleNotImplemented_GetNwdaf(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/nwdaf-registrations", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterNon3GppAccess_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString("{invalid"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdate3GppRegistration_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateNon3GppRegistration_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleDeregAMF_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/dereg-amf",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandlePeiUpdate_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/pei-update",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateRoamingInformation_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/roaming-info-update",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRegisterSmf_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateSmfRegistration_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRegisterSmsf3Gpp_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateSmsf3GppRegistration_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRegisterSmsfNon3Gpp_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateSmsfNon3GppRegistration_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleSendRoutingInfoSm_BadBody(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/send-routing-info-sm",
+		bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRegisterSmf_InvalidPduSessionID(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	body := `{"smfInstanceId":"smf-001","dnn":"internet"}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/abc",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRetrieveSmfRegistration_InvalidPduSessionID(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/bad", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleUpdateSmfRegistration_InvalidPduSessionID(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	body := `{"dnn":"ims"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/bad",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleDeregAMF_ServiceError(t *testing.T) {
+	svc := &mockService{
+		deregAMFFn: func(_ context.Context, _ string, _ *DeregistrationData) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"deregReason":"UE_INITIAL_REGISTRATION"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/dereg-amf",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandlePeiUpdate_ServiceError(t *testing.T) {
+	svc := &mockService{
+		peiUpdateFn: func(_ context.Context, _ string, _ *PeiUpdateInfo) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/pei-update",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateRoamingInformation_ServiceError(t *testing.T) {
+	svc := &mockService{
+		updateRoamingInformationFn: func(_ context.Context, _ string, _ *RoamingInfoUpdate) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"roaming":true}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access/roaming-info-update",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterNon3GppAccess_ServiceError(t *testing.T) {
+	svc := &mockService{
+		registerNon3GppAccessFn: func(_ context.Context, _ string, _ *AmfNon3GppAccessRegistration) (*AmfNon3GppAccessRegistration, bool, error) {
+			return nil, false, errors.NewBadRequest("invalid", errors.CauseMandatoryIEIncorrect)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"amfInstanceId":"amf-002","deregCallbackUri":"https://amf/dereg","guami":{},"ratType":"NR"}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetNon3GppRegistration_NotFound(t *testing.T) {
+	svc := &mockService{
+		getNon3GppRegistrationFn: func(_ context.Context, _ string) (*AmfNon3GppAccessRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateNon3GppRegistration_ServiceError(t *testing.T) {
+	svc := &mockService{
+		updateNon3GppRegistrationFn: func(_ context.Context, _ string, _ *AmfNon3GppAccessRegistration) (*AmfNon3GppAccessRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmfRegistration_NotFound(t *testing.T) {
+	svc := &mockService{
+		getSmfRegistrationFn: func(_ context.Context, _ string) ([]SmfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRetrieveSmfRegistration_NotFound(t *testing.T) {
+	svc := &mockService{
+		retrieveSmfRegistrationFn: func(_ context.Context, _ string, _ int) (*SmfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmfRegistration_ServiceError(t *testing.T) {
+	svc := &mockService{
+		updateSmfRegistrationFn: func(_ context.Context, _ string, _ int, _ *SmfRegistration) (*SmfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"dnn":"ims"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDeregisterSmf_NotFound(t *testing.T) {
+	svc := &mockService{
+		deregisterSmfFn: func(_ context.Context, _ string, _ int) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterSmsf3Gpp_ServiceError(t *testing.T) {
+	svc := &mockService{
+		registerSmsf3GppFn: func(_ context.Context, _ string, _ *SmsfRegistration) (*SmsfRegistration, bool, error) {
+			return nil, false, errors.NewBadRequest("invalid", errors.CauseMandatoryIEMissing)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"smsfInstanceId":"smsf-001","plmnId":{"mcc":"001","mnc":"01"}}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmsf3GppRegistration_NotFound(t *testing.T) {
+	svc := &mockService{
+		getSmsf3GppRegistrationFn: func(_ context.Context, _ string) (*SmsfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmsf3GppRegistration_ServiceError(t *testing.T) {
+	svc := &mockService{
+		updateSmsf3GppRegistrationFn: func(_ context.Context, _ string, _ *SmsfRegistration) (*SmsfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"registrationTime":"2024-01-01T00:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDeregisterSmsf3Gpp_NotFound(t *testing.T) {
+	svc := &mockService{
+		deregisterSmsf3GppFn: func(_ context.Context, _ string) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterSmsfNon3Gpp_ServiceError(t *testing.T) {
+	svc := &mockService{
+		registerSmsfNon3GppFn: func(_ context.Context, _ string, _ *SmsfRegistration) (*SmsfRegistration, bool, error) {
+			return nil, false, errors.NewBadRequest("invalid", errors.CauseMandatoryIEMissing)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"smsfInstanceId":"smsf-002","plmnId":{"mcc":"001","mnc":"01"}}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetSmsfNon3GppRegistration_NotFound(t *testing.T) {
+	svc := &mockService{
+		getSmsfNon3GppRegistrationFn: func(_ context.Context, _ string) (*SmsfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdateSmsfNon3GppRegistration_ServiceError(t *testing.T) {
+	svc := &mockService{
+		updateSmsfNon3GppRegFn: func(_ context.Context, _ string, _ *SmsfRegistration) (*SmsfRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"registrationTime":"2024-01-01T00:00:00Z"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDeregisterSmsfNon3Gpp_NotFound(t *testing.T) {
+	svc := &mockService{
+		deregisterSmsfNon3GppFn: func(_ context.Context, _ string) error {
+			return errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodDelete,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smsf-non-3gpp-access", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetRegistrations_ServiceError(t *testing.T) {
+	svc := &mockService{
+		getRegistrationsFn: func(_ context.Context, _ string) (*RegistrationDataSets, error) {
+			return nil, errors.NewBadRequest("invalid", errors.CauseMandatoryIEIncorrect)
+		},
+	}
+	mux := newTestMux(svc)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleSendRoutingInfoSm_ServiceError(t *testing.T) {
+	svc := &mockService{
+		sendRoutingInfoSmFn: func(_ context.Context, _ string, _ *RoutingInfoSmRequest) (*RoutingInfoSmResponse, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"supportedFeatures":"A"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/send-routing-info-sm",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegisterSmf_ServiceError(t *testing.T) {
+	svc := &mockService{
+		registerSmfFn: func(_ context.Context, _ string, _ int, _ *SmfRegistration) (*SmfRegistration, bool, error) {
+			return nil, false, errors.NewBadRequest("invalid", errors.CauseMandatoryIEMissing)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"smfInstanceId":"smf-001","dnn":"internet","singleNssai":{"sst":1},"plmnId":{"mcc":"001","mnc":"01"}}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/smf-registrations/5",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleUpdate3GppRegistration_ServiceError(t *testing.T) {
+	svc := &mockService{
+		update3GppRegistrationFn: func(_ context.Context, _ string, _ *Amf3GppAccessRegistration) (*Amf3GppAccessRegistration, error) {
+			return nil, errors.NewNotFound("not found", errors.CauseContextNotFound)
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"pei":"imei-123456789012345"}`
+	req := httptest.NewRequest(http.MethodPatch,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleRegister3GppAccess_ServiceError(t *testing.T) {
+	svc := &mockService{
+		register3GppAccessFn: func(_ context.Context, _ string, _ *Amf3GppAccessRegistration) (*Amf3GppAccessRegistration, bool, error) {
+			return nil, false, errors.NewInternalError("db error")
+		},
+	}
+	mux := newTestMux(svc)
+
+	body := `{"amfInstanceId":"amf-001","deregCallbackUri":"https://amf/dereg","guami":{},"ratType":"NR"}`
+	req := httptest.NewRequest(http.MethodPut,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/amf-3gpp-access",
+		bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleNotImplemented_RestorePcscf(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/nudm-uecm/v1/restore-pcscf", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleNotImplemented_LocationInfo(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/location", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleNotImplemented_AuthTrigger(t *testing.T) {
+	mux := newTestMux(&mockService{})
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/nudm-uecm/v1/imsi-001010000000001/registrations/trigger-auth", http.NoBody)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotImplemented {
+		t.Errorf("expected status 501, got %d: %s", w.Code, w.Body.String())
+	}
+}
