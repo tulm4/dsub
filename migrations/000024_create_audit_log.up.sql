@@ -12,5 +12,5 @@ CREATE TABLE udm.audit_log (
     nf_instance_id      UUID,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    PRIMARY KEY (id ASC)
+    PRIMARY KEY (supi HASH, id ASC)
 ) SPLIT INTO 2 TABLETS;
