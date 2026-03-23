@@ -1,0 +1,76 @@
+# NetworkPolicy for udm-uecm (UE Context Management)
+#
+# Based on: docs/security.md §7.2 (Pod-to-Pod Micro-Segmentation)
+# 3GPP: TS 29.503 Nudm_UECM — consumed by AMF, SMF, SMSF
+#
+# Ingress: AMF, SMF, SMSF pods on port 8443 (SBI)
+# Egress:  YugabyteDB on port 5433, NRF on port 8443, DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: udm-uecm
+  namespace: udm
+  labels:
+    app.kubernetes.io/part-of: udm
+    app.kubernetes.io/component: uecm
+spec:
+  podSelector:
+    matchLabels:
+      app: udm-uecm
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: amf
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: smf
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: smsf
+      ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: data
+          podSelector:
+            matchLabels:
+              app: yugabytedb
+      ports:
+        - protocol: TCP
+          port: 5433
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: nrf
+      ports:
+        - protocol: TCP
+          port: 8443
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

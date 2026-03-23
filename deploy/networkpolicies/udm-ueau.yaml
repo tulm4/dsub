@@ -1,0 +1,67 @@
+# NetworkPolicy for udm-ueau (UE Authentication)
+#
+# Based on: docs/security.md §7.2 (Pod-to-Pod Micro-Segmentation)
+# 3GPP: TS 29.503 Nudm_UEAU — consumed exclusively by AUSF
+#
+# Ingress: AUSF pods on port 8443 (SBI)
+# Egress:  YugabyteDB on port 5433, NRF on port 8443, DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: udm-ueau
+  namespace: udm
+  labels:
+    app.kubernetes.io/part-of: udm
+    app.kubernetes.io/component: ueau
+spec:
+  podSelector:
+    matchLabels:
+      app: udm-ueau
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: ausf
+      ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    # YugabyteDB (YSQL)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: data
+          podSelector:
+            matchLabels:
+              app: yugabytedb
+      ports:
+        - protocol: TCP
+          port: 5433
+    # NRF (registration, discovery, OAuth2)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: nrf
+      ports:
+        - protocol: TCP
+          port: 8443
+    # DNS resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

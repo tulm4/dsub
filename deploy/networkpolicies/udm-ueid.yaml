@@ -1,0 +1,79 @@
+# NetworkPolicy for udm-ueid (SUCI De-concealment)
+#
+# Based on: docs/security.md §7.2 (Pod-to-Pod Micro-Segmentation)
+# 3GPP: TS 29.503 Nudm_UEID — consumed by AUSF (SIDF function)
+#
+# Ingress: AUSF pods on port 8443 (SBI)
+# Egress:  YugabyteDB on port 5433, NRF on port 8443, HSM on port 2345, DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: udm-ueid
+  namespace: udm
+  labels:
+    app.kubernetes.io/part-of: udm
+    app.kubernetes.io/component: ueid
+spec:
+  podSelector:
+    matchLabels:
+      app: udm-ueid
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: ausf
+      ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    # YugabyteDB (YSQL)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: data
+          podSelector:
+            matchLabels:
+              app: yugabytedb
+      ports:
+        - protocol: TCP
+          port: 5433
+    # NRF
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: signaling
+          podSelector:
+            matchLabels:
+              app: nrf
+      ports:
+        - protocol: TCP
+          port: 8443
+    # HSM (PKCS#11 over dedicated management network)
+    # Based on: docs/security.md §5.6 (HSM Connectivity)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.kubernetes.io/plane: management
+          podSelector:
+            matchLabels:
+              app: hsm
+      ports:
+        - protocol: TCP
+          port: 2345
+    # DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
