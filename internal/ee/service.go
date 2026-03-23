@@ -89,14 +89,13 @@ func safeColumn(col string) string {
 	return col
 }
 
-// marshalNullableJSON returns the JSON encoding of raw, or nil if raw is nil.
-// json.RawMessage is a []byte alias so json.Marshal cannot fail for it.
+// marshalNullableJSON returns the raw JSON bytes, or nil if raw is nil.
+// json.RawMessage is already a []byte alias containing valid JSON.
 func marshalNullableJSON(raw json.RawMessage) []byte {
 	if raw == nil {
 		return nil
 	}
-	b, _ := json.Marshal(raw)
-	return b
+	return []byte(raw)
 }
 
 // CreateSubscription creates a new event exposure subscription.
@@ -122,9 +121,9 @@ func (s *Service) CreateSubscription(ctx context.Context, ueIdentity string, sub
 
 	col, val := identityColumns(ueIdentity)
 
-	// json.RawMessage is a []byte alias — json.Marshal cannot fail for it.
-	monCfgBytes, _ := json.Marshal(sub.MonitoringConfigurations)
-	repOptBytes, _ := json.Marshal(sub.ReportingOptions)
+	// json.RawMessage is already a []byte alias containing valid JSON — pass directly.
+	monCfgBytes := []byte(sub.MonitoringConfigurations)
+	repOptBytes := []byte(sub.ReportingOptions)
 	immRepBytes := marshalNullableJSON(sub.ImmediateReportData)
 
 	var subscriptionID string
@@ -165,16 +164,16 @@ func (s *Service) UpdateSubscription(ctx context.Context, ueIdentity, subscripti
 
 	col, val := identityColumns(ueIdentity)
 
-	// Marshal JSONB patch fields.
+	// Pass raw JSON bytes directly — json.RawMessage is already valid JSON.
 	var monCfgBytes, repOptBytes, immRepBytes []byte
 	if patch.MonitoringConfigurations != nil {
-		monCfgBytes, _ = json.Marshal(*patch.MonitoringConfigurations)
+		monCfgBytes = []byte(*patch.MonitoringConfigurations)
 	}
 	if patch.ReportingOptions != nil {
-		repOptBytes, _ = json.Marshal(*patch.ReportingOptions)
+		repOptBytes = []byte(*patch.ReportingOptions)
 	}
 	if patch.ImmediateReportData != nil {
-		immRepBytes, _ = json.Marshal(*patch.ImmediateReportData)
+		immRepBytes = []byte(*patch.ImmediateReportData)
 	}
 
 	row := s.db.QueryRow(ctx,

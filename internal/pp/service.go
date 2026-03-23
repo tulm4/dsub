@@ -96,14 +96,13 @@ func (s *Service) GetPPData(ctx context.Context, ueID string) (*PpData, error) {
 	return &data, nil
 }
 
-// marshalNullableJSON returns the JSON encoding of raw, or nil if raw is nil.
-// json.RawMessage is a []byte alias so json.Marshal cannot fail for it.
+// marshalNullableJSON returns the raw JSON bytes, or nil if raw is nil.
+// json.RawMessage is already a []byte alias containing valid JSON.
 func marshalNullableJSON(raw json.RawMessage) []byte {
 	if raw == nil {
 		return nil
 	}
-	b, _ := json.Marshal(raw)
-	return b
+	return []byte(raw)
 }
 
 // UpdatePPData creates or updates provisioned parameter data for a subscriber.
@@ -131,7 +130,10 @@ func (s *Service) UpdatePPData(ctx context.Context, ueID string, patch *PpData) 
 	steeringBytes := marshalNullableJSON(patch.SteeringContainer)
 	ppDlCountExtBytes := marshalNullableJSON(patch.PpDlPacketCountExt)
 
-	// supportedFeatures: pass nil (SQL NULL) when empty to preserve via COALESCE.
+	// supportedFeatures: pass nil (SQL NULL) when the field is not provided
+	// (zero value for string) to preserve via COALESCE.
+	// An explicit empty string is treated the same as absent since the 3GPP
+	// SupportedFeatures field is always non-empty when present.
 	var supportedFeatures *string
 	if patch.SupportedFeatures != "" {
 		supportedFeatures = &patch.SupportedFeatures
