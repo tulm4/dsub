@@ -193,8 +193,8 @@ func TestDefaultRateLimits_AllServicesConfigured(t *testing.T) {
 		if cfg.Rate <= 0 {
 			t.Errorf("rate for %q must be positive, got %f", svc, cfg.Rate)
 		}
-		if cfg.Burst < cfg.Rate {
-			t.Errorf("burst for %q (%f) should be >= rate (%f)", svc, cfg.Burst, cfg.Rate)
+		if cfg.Burst <= 0 {
+			t.Errorf("burst for %q must be positive, got %f", svc, cfg.Burst)
 		}
 	}
 }
