@@ -6,6 +6,7 @@ CREATE TABLE udm.ssau_authorizations (
     auth_id                 UUID        NOT NULL DEFAULT gen_random_uuid(),
     supi                    TEXT,
     gpsi                    TEXT,
+    ue_group_id             TEXT,
     service_type            TEXT        NOT NULL,
     snssai                  JSONB,
     dnn                     TEXT,
@@ -25,3 +26,5 @@ CREATE INDEX idx_ssau_authorizations_supi ON udm.ssau_authorizations (supi)
     WHERE supi IS NOT NULL;
 CREATE INDEX idx_ssau_authorizations_gpsi ON udm.ssau_authorizations (gpsi)
     WHERE gpsi IS NOT NULL;
+CREATE INDEX idx_ssau_authorizations_ue_group_id ON udm.ssau_authorizations (ue_group_id)
+    WHERE ue_group_id IS NOT NULL;

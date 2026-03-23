@@ -12,9 +12,9 @@ import "encoding/json"
 //
 // 3GPP: TS 29.503 — AuthorizationInfo data type
 type AuthorizationInfo struct {
-	Snssai                json.RawMessage `json:"snssai,omitempty"`
+	SNssai                json.RawMessage `json:"snssai,omitempty"`
 	Dnn                   string          `json:"dnn,omitempty"`
-	MtcProviderInfo       json.RawMessage `json:"mtcProviderInformation,omitempty"`
+	MtcProviderInformation json.RawMessage `json:"mtcProviderInformation,omitempty"`
 	AuthUpdateCallbackURI string          `json:"authUpdateCallbackUri,omitempty"`
 	AfID                  string          `json:"afId,omitempty"`
 	NefID                 string          `json:"nefId,omitempty"`

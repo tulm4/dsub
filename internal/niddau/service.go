@@ -40,15 +40,15 @@ func NewService(db DB) *Service {
 }
 
 // validateUeID validates a ueIdentity path parameter. For NIDDAU endpoints
-// the ueIdentity may be a GPSI (msisdn-/extid-) or a group identifier
-// (extgroupid- prefix).
+// the ueIdentity may be a GPSI (msisdn-/extid-), a group identifier
+// (group- prefix), or a SUPI (imsi-).
 func validateUeID(ueID string) error {
 	if identifiers.IsGPSI(ueID) {
 		return identifiers.ValidateGPSI(ueID)
 	}
-	if strings.HasPrefix(ueID, "extgroupid-") {
-		if len(ueID) <= len("extgroupid-") {
-			return fmt.Errorf("invalid extgroupid: must be extgroupid-<non-empty>: %s", ueID)
+	if strings.HasPrefix(ueID, "group-") {
+		if len(ueID) <= len("group-") {
+			return fmt.Errorf("invalid group identifier: must be group-<non-empty>: %s", ueID)
 		}
 		return nil
 	}
@@ -56,11 +56,11 @@ func validateUeID(ueID string) error {
 	if identifiers.IsSUPI(ueID) {
 		return identifiers.ValidateSUPI(ueID)
 	}
-	return fmt.Errorf("invalid identifier format: must be GPSI (msisdn-/extid-), group ID (extgroupid-), or SUPI (imsi-): %s", ueID)
+	return fmt.Errorf("invalid identifier format: must be GPSI (msisdn-/extid-), group ID (group-), or SUPI (imsi-): %s", ueID)
 }
 
-// AuthorizeNiddData validates that a subscriber is authorized for NIDD on
-// the requested DNN and S-NSSAI and returns the authorized configuration.
+// AuthorizeNiddData processes a NIDD authorization request for the
+// specified UE identity and returns the corresponding authorization data.
 //
 // Based on: docs/sbi-api-design.md §3.8 (POST /{ueIdentity}/authorize)
 // 3GPP: TS 29.503 Nudm_NIDDAU — AuthorizeNiddData

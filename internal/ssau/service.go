@@ -47,15 +47,15 @@ var validServiceTypes = map[string]bool{
 }
 
 // validateUeID validates a ueIdentity path parameter. For SSAU endpoints
-// the ueIdentity may be a GPSI (msisdn-/extid-) or a group identifier
-// (extgroupid- prefix).
+// the ueIdentity may be a GPSI (msisdn-/extid-), a group identifier
+// (group- prefix), or a SUPI (imsi-).
 func validateUeID(ueID string) error {
 	if identifiers.IsGPSI(ueID) {
 		return identifiers.ValidateGPSI(ueID)
 	}
-	if strings.HasPrefix(ueID, "extgroupid-") {
-		if len(ueID) <= len("extgroupid-") {
-			return fmt.Errorf("invalid extgroupid: must be extgroupid-<non-empty>: %s", ueID)
+	if strings.HasPrefix(ueID, "group-") {
+		if len(ueID) <= len("group-") {
+			return fmt.Errorf("invalid group identifier: must be group-<non-empty>: %s", ueID)
 		}
 		return nil
 	}
@@ -63,7 +63,7 @@ func validateUeID(ueID string) error {
 	if identifiers.IsSUPI(ueID) {
 		return identifiers.ValidateSUPI(ueID)
 	}
-	return fmt.Errorf("invalid identifier format: must be GPSI (msisdn-/extid-), group ID (extgroupid-), or SUPI (imsi-): %s", ueID)
+	return fmt.Errorf("invalid identifier format: must be GPSI (msisdn-/extid-), group ID (group-), or SUPI (imsi-): %s", ueID)
 }
 
 // validateServiceType validates that the serviceType is a known value.
@@ -75,18 +75,23 @@ func validateServiceType(serviceType string) error {
 }
 
 // identityColumns returns the column name and value to use for the given ueIdentity.
+// The returned column is always one of "supi", "gpsi", or "ue_group_id".
 func identityColumns(ueID string) (string, string) {
 	if identifiers.IsSUPI(ueID) {
 		return "supi", ueID
 	}
-	return "gpsi", ueID
+	if identifiers.IsGPSI(ueID) {
+		return "gpsi", ueID
+	}
+	return "ue_group_id", ueID
 }
 
 // allowedColumns is the allowlist of column names that can appear in
 // dynamically constructed WHERE clauses.
 var allowedColumns = map[string]bool{
-	"supi": true,
-	"gpsi": true,
+	"supi":        true,
+	"gpsi":        true,
+	"ue_group_id": true,
 }
 
 // safeColumn validates that col is in the allowedColumns allowlist and panics
@@ -122,8 +127,8 @@ func (s *Service) Authorize(ctx context.Context, ueIdentity, serviceType string,
 	col, val := identityColumns(ueIdentity)
 
 	var snssaiBytes []byte
-	if req.Snssai != nil {
-		snssaiBytes = []byte(req.Snssai)
+	if req.SNssai != nil {
+		snssaiBytes = []byte(req.SNssai)
 	}
 
 	var authorizationData []byte

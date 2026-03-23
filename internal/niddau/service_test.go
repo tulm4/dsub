@@ -117,11 +117,11 @@ func TestValidateUeID(t *testing.T) {
 	}{
 		{name: "valid GPSI msisdn", input: "msisdn-12025551234", wantErr: false},
 		{name: "valid GPSI extid", input: "extid-user@example.com", wantErr: false},
-		{name: "valid extgroupid", input: "extgroupid-group1", wantErr: false},
+		{name: "valid group", input: "group-group1", wantErr: false},
 		{name: "valid SUPI", input: "imsi-001010000000001", wantErr: false},
 		{name: "empty string", input: "", wantErr: true},
 		{name: "bad prefix", input: "unknown-001", wantErr: true},
-		{name: "empty extgroupid", input: "extgroupid-", wantErr: true},
+		{name: "empty group", input: "group-", wantErr: true},
 	}
 
 	for _, tc := range tests {
@@ -201,7 +201,7 @@ func TestAuthorizeNiddData_GroupID(t *testing.T) {
 		Dnn:          "iot",
 		ValidityTime: "2026-12-31T23:59:59Z",
 	}
-	result, err := svc.AuthorizeNiddData(context.Background(), "extgroupid-iot-group", req)
+	result, err := svc.AuthorizeNiddData(context.Background(), "group-iot-group", req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
