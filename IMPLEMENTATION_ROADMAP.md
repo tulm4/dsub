@@ -361,9 +361,9 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 |----------|-------|
 | **Phase ID** | Phase 6 |
 | **Name** | Low-Traffic Services |
-| **Status** | NOT_STARTED |
-| **Progress** | 0% |
-| **Last Updated** | 2026-03-21 |
+| **Status** | DONE |
+| **Progress** | 100% |
+| **Last Updated** | 2026-03-23 |
 | **Owner** | — |
 
 **Description**: Implement the three low-traffic Nudm microservices for service authorization, NIDD authorization, and SMS delivery status reporting.
@@ -382,11 +382,13 @@ This project implements a telecom-grade **5G Core Unified Data Management (UDM)*
 - `cmd/udm-rsds/` + `internal/rsds/` — SMS delivery status recording
 
 **Deliverables**:
-- [ ] **udm-ssau**: Service-specific authorization check and removal endpoints
-- [ ] **udm-niddau**: NIDD authorization endpoint with DNN/S-NSSAI validation
-- [ ] **udm-rsds**: SMS delivery status reporting with EE event propagation
-- [ ] Unit tests, integration tests, API conformance tests
-- [ ] Complete Nudm API surface coverage (all 10 services operational)
+- [x] **udm-ssau**: Service-specific authorization check and removal endpoints
+- [x] **udm-niddau**: NIDD authorization endpoint with DNN/S-NSSAI validation
+- [x] **udm-rsds**: SMS delivery status reporting with EE event propagation
+- [x] Unit tests, integration tests, API conformance tests
+- [x] Complete Nudm API surface coverage (all 10 services operational)
+- [x] Database migrations 000031 (ssau_authorizations) and 000032 (sms_delivery_status)
+- [x] CI workflow updated with new service integration test packages
 
 **Dependencies**: Phase 1, Phase 2, Phase 5 (EE integration for RSDS events)
 
@@ -768,7 +770,7 @@ Phase 1 (Foundation)
 | 3 | Core High-Traffic Services (UEAU, SDM, UECM) | DONE | 100% | 2026-03-22 | Phase 1, 2 |
 | 4 | SUCI De-concealment & NRF Integration | DONE | 100% | 2026-03-22 | Phase 1, 3 |
 | 5 | Medium-Traffic Services (EE, PP, MT) | DONE | 100% | 2026-03-22 | Phase 1, 2, 3 |
-| 6 | Low-Traffic Services (SSAU, NIDDAU, RSDS) | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 2, 5 |
+| 6 | Low-Traffic Services (SSAU, NIDDAU, RSDS) | DONE | 100% | 2026-03-23 | Phase 1, 2, 5 |
 | 7 | Security Hardening | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3, 4 |
 | 8 | Observability & Monitoring | NOT_STARTED | 0% | 2026-03-21 | Phase 1, 3–6 |
 | 9 | Multi-Region Deployment & Infrastructure | NOT_STARTED | 0% | 2026-03-21 | Phase 1–8 |

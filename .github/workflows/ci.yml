@@ -134,7 +134,7 @@ jobs:
         env:
           YUGABYTE_DSN: "postgres://yugabyte:yugabyte@localhost:5433/yugabyte?sslmode=disable"
         run: |
-          go test ./migrations/... ./internal/ueau/... ./internal/sdm/... ./internal/uecm/... ./internal/ueid/... ./internal/ee/... ./internal/pp/... ./internal/mt/... \
+          go test ./migrations/... ./internal/ueau/... ./internal/sdm/... ./internal/uecm/... ./internal/ueid/... ./internal/ee/... ./internal/pp/... ./internal/mt/... ./internal/ssau/... ./internal/niddau/... ./internal/rsds/... \
             -tags=integration \
             -count=1 \
             -p 1 \
