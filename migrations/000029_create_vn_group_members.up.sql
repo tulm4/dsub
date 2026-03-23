@@ -9,4 +9,4 @@ CREATE TABLE udm.vn_group_members (
     PRIMARY KEY (ext_group_id, gpsi),
     CONSTRAINT fk_vn_group_members_group
         FOREIGN KEY (ext_group_id) REFERENCES udm.vn_groups(ext_group_id) ON DELETE CASCADE
-) SPLIT INTO 32 TABLETS;
+) SPLIT INTO 2 TABLETS;

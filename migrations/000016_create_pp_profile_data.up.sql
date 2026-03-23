@@ -12,4 +12,4 @@ CREATE TABLE udm.pp_profile_data (
     PRIMARY KEY (supi),
     CONSTRAINT fk_pp_profile_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

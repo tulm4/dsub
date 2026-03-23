@@ -14,4 +14,4 @@ CREATE TABLE udm.sms_subscription_data (
     PRIMARY KEY (supi, serving_plmn_id),
     CONSTRAINT fk_sms_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

@@ -25,4 +25,4 @@ CREATE TABLE udm.sdm_subscriptions (
     PRIMARY KEY (subscription_id),
     CONSTRAINT fk_sdm_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

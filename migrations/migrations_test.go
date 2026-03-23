@@ -262,8 +262,8 @@ func TestSubscribersTableSchema(t *testing.T) {
 	}
 
 	// Verify SPLIT INTO for sharding
-	if !strings.Contains(sub.SQL, "SPLIT INTO 128 TABLETS") {
-		t.Error("subscribers migration missing SPLIT INTO 128 TABLETS")
+	if !strings.Contains(sub.SQL, "SPLIT INTO 4 TABLETS") {
+		t.Error("subscribers migration missing SPLIT INTO 4 TABLETS")
 	}
 }
 

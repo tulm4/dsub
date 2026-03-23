@@ -11,4 +11,4 @@ CREATE TABLE udm.message_waiting_data (
     PRIMARY KEY (supi),
     CONSTRAINT fk_mwd_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 16 TABLETS;
+) SPLIT INTO 2 TABLETS;

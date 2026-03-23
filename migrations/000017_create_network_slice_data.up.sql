@@ -15,4 +15,4 @@ CREATE TABLE udm.network_slice_data (
     PRIMARY KEY (supi),
     CONSTRAINT fk_nsd_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

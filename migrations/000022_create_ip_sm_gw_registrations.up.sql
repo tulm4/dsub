@@ -14,4 +14,4 @@ CREATE TABLE udm.ip_sm_gw_registrations (
     PRIMARY KEY (supi),
     CONSTRAINT fk_ipsmgw_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 16 TABLETS;
+) SPLIT INTO 2 TABLETS;

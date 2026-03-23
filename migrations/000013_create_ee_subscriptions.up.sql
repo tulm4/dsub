@@ -26,4 +26,4 @@ CREATE TABLE udm.ee_subscriptions (
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE,
     CONSTRAINT chk_ee_identity
         CHECK (supi IS NOT NULL OR gpsi IS NOT NULL OR ue_group_id IS NOT NULL)
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

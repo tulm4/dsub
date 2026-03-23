@@ -22,4 +22,4 @@ CREATE TABLE udm.smsf_registrations (
     PRIMARY KEY (supi, access_type),
     CONSTRAINT fk_smsf_reg_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

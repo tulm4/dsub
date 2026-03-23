@@ -13,4 +13,4 @@ CREATE TABLE udm.audit_log (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (id ASC)
-) SPLIT INTO 32 TABLETS;
+) SPLIT INTO 2 TABLETS;

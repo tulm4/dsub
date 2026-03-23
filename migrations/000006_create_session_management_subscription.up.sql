@@ -24,4 +24,4 @@ CREATE TABLE udm.session_management_subscription (
     PRIMARY KEY (supi, serving_plmn_id, nssai_sst, nssai_sd),
     CONSTRAINT fk_sm_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 128 TABLETS;
+) SPLIT INTO 4 TABLETS;

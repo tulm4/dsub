@@ -16,4 +16,4 @@ CREATE TABLE udm.operator_specific_data (
     CONSTRAINT fk_opdata_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE,
     CONSTRAINT uq_opdata_supi_type UNIQUE (supi, data_type)
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

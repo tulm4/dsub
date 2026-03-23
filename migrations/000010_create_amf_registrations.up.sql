@@ -37,4 +37,4 @@ CREATE TABLE udm.amf_registrations (
     PRIMARY KEY (supi, access_type),
     CONSTRAINT fk_amf_reg_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 128 TABLETS;
+) SPLIT INTO 4 TABLETS;
