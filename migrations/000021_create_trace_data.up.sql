@@ -20,4 +20,4 @@ CREATE TABLE udm.trace_data (
     PRIMARY KEY (supi, serving_plmn_id),
     CONSTRAINT fk_trace_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 16 TABLETS;
+) SPLIT INTO 2 TABLETS;

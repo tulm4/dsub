@@ -17,4 +17,4 @@ CREATE TABLE udm.ue_update_confirmation (
     PRIMARY KEY (supi),
     CONSTRAINT fk_uuc_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 64 TABLETS;
+) SPLIT INTO 2 TABLETS;

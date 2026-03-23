@@ -20,4 +20,4 @@ CREATE TABLE udm.subscribers (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (supi)
-) SPLIT INTO 128 TABLETS;
+) SPLIT INTO 4 TABLETS;

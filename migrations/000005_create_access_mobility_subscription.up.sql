@@ -44,4 +44,4 @@ CREATE TABLE udm.access_mobility_subscription (
     PRIMARY KEY (supi, serving_plmn_id),
     CONSTRAINT fk_am_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 128 TABLETS;
+) SPLIT INTO 4 TABLETS;

@@ -20,4 +20,4 @@ CREATE TABLE udm.vn_groups (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (ext_group_id)
-) SPLIT INTO 32 TABLETS;
+) SPLIT INTO 2 TABLETS;

@@ -36,4 +36,4 @@ CREATE TABLE udm.authentication_data (
     PRIMARY KEY (supi),
     CONSTRAINT fk_auth_subscriber
         FOREIGN KEY (supi) REFERENCES udm.subscribers(supi) ON DELETE CASCADE
-) SPLIT INTO 128 TABLETS;
+) SPLIT INTO 4 TABLETS;

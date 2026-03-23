@@ -12,4 +12,4 @@ CREATE TABLE udm.shared_data (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (shared_data_id)
-) SPLIT INTO 16 TABLETS;
+) SPLIT INTO 2 TABLETS;

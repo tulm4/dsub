@@ -11,4 +11,4 @@ CREATE TABLE udm.mbs_group_membership (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (ext_group_id)
-) SPLIT INTO 16 TABLETS;
+) SPLIT INTO 2 TABLETS;
