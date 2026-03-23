@@ -107,6 +107,7 @@ func marshalNullableJSON(raw json.RawMessage) []byte {
 }
 
 // UpdatePPData creates or updates provisioned parameter data for a subscriber.
+// Uses COALESCE to preserve existing values when fields are absent in the patch.
 //
 // Based on: docs/sbi-api-design.md §3.5 (PATCH /{ueId}/pp-data)
 // 3GPP: TS 29.503 Nudm_PP — UpdatePPData
@@ -130,6 +131,12 @@ func (s *Service) UpdatePPData(ctx context.Context, ueID string, patch *PpData) 
 	steeringBytes := marshalNullableJSON(patch.SteeringContainer)
 	ppDlCountExtBytes := marshalNullableJSON(patch.PpDlPacketCountExt)
 
+	// supportedFeatures: pass nil (SQL NULL) when empty to preserve via COALESCE.
+	var supportedFeatures *string
+	if patch.SupportedFeatures != "" {
+		supportedFeatures = &patch.SupportedFeatures
+	}
+
 	var result PpData
 	row := s.db.QueryRow(ctx,
 		`INSERT INTO udm.pp_data (
@@ -140,18 +147,18 @@ func (s *Service) UpdatePPData(ctx context.Context, ueID string, patch *PpData) 
 		     pp_maximum_response_time, pp_maximum_latency
 		 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		 ON CONFLICT (supi) DO UPDATE SET
-		     communication_characteristics = EXCLUDED.communication_characteristics,
-		     supported_features = EXCLUDED.supported_features,
-		     expected_ue_behaviour = EXCLUDED.expected_ue_behaviour,
-		     ec_restriction = EXCLUDED.ec_restriction,
-		     acs_info = EXCLUDED.acs_info,
-		     sor_info = EXCLUDED.sor_info,
-		     five_mbs_authorization_info = EXCLUDED.five_mbs_authorization_info,
-		     steering_container = EXCLUDED.steering_container,
-		     pp_dl_packet_count = EXCLUDED.pp_dl_packet_count,
-		     pp_dl_packet_count_ext = EXCLUDED.pp_dl_packet_count_ext,
-		     pp_maximum_response_time = EXCLUDED.pp_maximum_response_time,
-		     pp_maximum_latency = EXCLUDED.pp_maximum_latency,
+		     communication_characteristics = COALESCE(EXCLUDED.communication_characteristics, udm.pp_data.communication_characteristics),
+		     supported_features = COALESCE(EXCLUDED.supported_features, udm.pp_data.supported_features),
+		     expected_ue_behaviour = COALESCE(EXCLUDED.expected_ue_behaviour, udm.pp_data.expected_ue_behaviour),
+		     ec_restriction = COALESCE(EXCLUDED.ec_restriction, udm.pp_data.ec_restriction),
+		     acs_info = COALESCE(EXCLUDED.acs_info, udm.pp_data.acs_info),
+		     sor_info = COALESCE(EXCLUDED.sor_info, udm.pp_data.sor_info),
+		     five_mbs_authorization_info = COALESCE(EXCLUDED.five_mbs_authorization_info, udm.pp_data.five_mbs_authorization_info),
+		     steering_container = COALESCE(EXCLUDED.steering_container, udm.pp_data.steering_container),
+		     pp_dl_packet_count = COALESCE(EXCLUDED.pp_dl_packet_count, udm.pp_data.pp_dl_packet_count),
+		     pp_dl_packet_count_ext = COALESCE(EXCLUDED.pp_dl_packet_count_ext, udm.pp_data.pp_dl_packet_count_ext),
+		     pp_maximum_response_time = COALESCE(EXCLUDED.pp_maximum_response_time, udm.pp_data.pp_maximum_response_time),
+		     pp_maximum_latency = COALESCE(EXCLUDED.pp_maximum_latency, udm.pp_data.pp_maximum_latency),
 		     updated_at = NOW()
 		 RETURNING communication_characteristics, supported_features,
 		           expected_ue_behaviour, ec_restriction, acs_info, sor_info,
@@ -160,7 +167,7 @@ func (s *Service) UpdatePPData(ctx context.Context, ueID string, patch *PpData) 
 		           pp_maximum_response_time, pp_maximum_latency`,
 		ueID,
 		commCharBytes,
-		patch.SupportedFeatures,
+		supportedFeatures,
 		expectedUeBytes,
 		ecRestrictionBytes,
 		acsInfoBytes,
@@ -224,13 +231,14 @@ func marshalStringSlice(s []string) ([]byte, error) {
 // af_instance_id, internal_group_identifier, mtc_provider_information.
 func scanVnGroup(row pgx.Row) (*VnGroupConfiguration, error) {
 	var result VnGroupConfiguration
-	var pduTypesJSON, membersJSON []byte
+	var secondaryAuth bool
+	var membersJSON []byte
 	err := row.Scan(
 		&result.Dnn,
 		&result.SNssai,
-		&pduTypesJSON,
+		&result.PduSessionTypes,
 		&result.AppDescriptors,
-		&result.SecondaryAuth,
+		&secondaryAuth,
 		&result.DnAaaAddress,
 		&result.DnAaaFqdn,
 		&membersJSON,
@@ -242,11 +250,7 @@ func scanVnGroup(row pgx.Row) (*VnGroupConfiguration, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pduTypesJSON != nil {
-		if err := json.Unmarshal(pduTypesJSON, &result.PduSessionTypes); err != nil {
-			return nil, fmt.Errorf("unmarshal pduSessionTypes: %w", err)
-		}
-	}
+	result.SecondaryAuth = &secondaryAuth
 	if membersJSON != nil {
 		if err := json.Unmarshal(membersJSON, &result.Members); err != nil {
 			return nil, fmt.Errorf("unmarshal members: %w", err)
@@ -272,13 +276,18 @@ func (s *Service) Create5GVnGroup(ctx context.Context, extGroupID string, cfg *V
 	dnAaaAddrBytes := marshalNullableJSON(cfg.DnAaaAddress)
 	mtcProvBytes := marshalNullableJSON(cfg.MtcProviderInformation)
 
-	pduTypesBytes, err := marshalStringSlice(cfg.PduSessionTypes)
-	if err != nil {
-		return nil, false, errors.NewInternalError(fmt.Sprintf("pp: failed to marshal pduSessionTypes: %v", err))
-	}
 	membersBytes, err := marshalStringSlice(cfg.Members)
 	if err != nil {
 		return nil, false, errors.NewInternalError(fmt.Sprintf("pp: failed to marshal members: %v", err))
+	}
+	// vn_groups.members is NOT NULL DEFAULT '[]'::jsonb — never insert SQL NULL.
+	if membersBytes == nil {
+		membersBytes = []byte("[]")
+	}
+
+	var secondaryAuth bool
+	if cfg.SecondaryAuth != nil {
+		secondaryAuth = *cfg.SecondaryAuth
 	}
 
 	var created bool
@@ -307,9 +316,9 @@ func (s *Service) Create5GVnGroup(ctx context.Context, extGroupID string, cfg *V
 		extGroupID,
 		cfg.Dnn,
 		sNssaiBytes,
-		pduTypesBytes,
+		cfg.PduSessionTypes,
 		appDescBytes,
-		cfg.SecondaryAuth,
+		secondaryAuth,
 		dnAaaAddrBytes,
 		cfg.DnAaaFqdn,
 		membersBytes,
@@ -373,10 +382,6 @@ func (s *Service) Modify5GVnGroup(ctx context.Context, extGroupID string, patch 
 	dnAaaAddrBytes := marshalNullableJSON(patch.DnAaaAddress)
 	mtcProvBytes := marshalNullableJSON(patch.MtcProviderInformation)
 
-	pduTypesBytes, err := marshalStringSlice(patch.PduSessionTypes)
-	if err != nil {
-		return nil, errors.NewInternalError(fmt.Sprintf("pp: failed to marshal pduSessionTypes: %v", err))
-	}
 	membersBytes, err := marshalStringSlice(patch.Members)
 	if err != nil {
 		return nil, errors.NewInternalError(fmt.Sprintf("pp: failed to marshal members: %v", err))
@@ -388,7 +393,7 @@ func (s *Service) Modify5GVnGroup(ctx context.Context, extGroupID string, patch 
 		     s_nssai = COALESCE($3, s_nssai),
 		     pdu_session_types = COALESCE($4, pdu_session_types),
 		     app_descriptors = COALESCE($5, app_descriptors),
-		     secondary_auth = $6, -- bool: always set (Go zero value limitation)
+		     secondary_auth = COALESCE($6, secondary_auth),
 		     dn_aaa_address = COALESCE($7, dn_aaa_address),
 		     dn_aaa_fqdn = COALESCE(NULLIF($8, ''), dn_aaa_fqdn),
 		     members = COALESCE($9, members),
@@ -405,7 +410,7 @@ func (s *Service) Modify5GVnGroup(ctx context.Context, extGroupID string, patch 
 		extGroupID,
 		patch.Dnn,
 		sNssaiBytes,
-		pduTypesBytes,
+		patch.PduSessionTypes,
 		appDescBytes,
 		patch.SecondaryAuth,
 		dnAaaAddrBytes,
@@ -474,6 +479,11 @@ func (s *Service) CreateMbsGroupMembership(ctx context.Context, extGroupID strin
 	}
 
 	multicastBytes := marshalNullableJSON(memb.MulticastGroupMemb)
+	// mbs_group_membership.multicast_group_memb is NOT NULL DEFAULT '[]'::jsonb —
+	// never insert SQL NULL.
+	if multicastBytes == nil {
+		multicastBytes = []byte("[]")
+	}
 
 	var created bool
 	row := s.db.QueryRow(ctx,

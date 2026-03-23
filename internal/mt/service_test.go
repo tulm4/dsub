@@ -178,7 +178,7 @@ func TestQueryUeInfo_NotFound(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(_ ...any) error {
-				return fmt.Errorf("no rows")
+				return pgx.ErrNoRows
 			}}
 		},
 	}
@@ -204,6 +204,24 @@ func TestQueryUeInfo_GPSIRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestQueryUeInfo_DBError(t *testing.T) {
+	db := &mockDB{
+		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
+			return &mockRow{scanFn: func(_ ...any) error {
+				return fmt.Errorf("connection reset")
+			}}
+		},
+	}
+	svc := NewService(db)
+
+	_, err := svc.QueryUeInfo(context.Background(), testSUPI)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	// Non-ErrNoRows DB errors should be mapped to 500, not 404.
+	assertProblemStatus(t, err, http.StatusInternalServerError)
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +281,7 @@ func TestProvideLocationInfo_NotFound(t *testing.T) {
 	db := &mockDB{
 		queryRowFn: func(_ context.Context, _ string, _ ...any) pgx.Row {
 			return &mockRow{scanFn: func(_ ...any) error {
-				return fmt.Errorf("no rows")
+				return pgx.ErrNoRows
 			}}
 		},
 	}
@@ -297,7 +315,7 @@ func TestProvideLocationInfo_DBError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	// DB errors on scan are mapped to 404 (not found) since we can't distinguish
-	// between "no rows" and "db error" with pgx.Row.Scan pattern
-	assertProblemStatus(t, err, http.StatusNotFound)
+	// DB errors (non-ErrNoRows) should be mapped to 500 Internal Server Error,
+	// not 404 Not Found.
+	assertProblemStatus(t, err, http.StatusInternalServerError)
 }

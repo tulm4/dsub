@@ -75,9 +75,14 @@ func (s *Service) QueryUeInfo(ctx context.Context, supi string) (*UeInfo, error)
 
 	var amfInstanceID, ratType, accessType string
 	if err := row.Scan(&amfInstanceID, &ratType, &accessType); err != nil {
-		return nil, errors.NewNotFound(
-			fmt.Sprintf("mt: AMF registration not found for: %s", supi),
-			errors.CauseContextNotFound,
+		if err == pgx.ErrNoRows {
+			return nil, errors.NewNotFound(
+				fmt.Sprintf("mt: AMF registration not found for: %s", supi),
+				errors.CauseContextNotFound,
+			)
+		}
+		return nil, errors.NewInternalError(
+			fmt.Sprintf("mt: database error querying AMF registration for %s: %v", supi, err),
 		)
 	}
 
@@ -114,9 +119,14 @@ func (s *Service) ProvideLocationInfo(ctx context.Context, supi string, req *Loc
 
 	var amfInstanceID, ratType string
 	if err := row.Scan(&amfInstanceID, &ratType); err != nil {
-		return nil, errors.NewNotFound(
-			fmt.Sprintf("mt: AMF registration not found for: %s", supi),
-			errors.CauseContextNotFound,
+		if err == pgx.ErrNoRows {
+			return nil, errors.NewNotFound(
+				fmt.Sprintf("mt: AMF registration not found for: %s", supi),
+				errors.CauseContextNotFound,
+			)
+		}
+		return nil, errors.NewInternalError(
+			fmt.Sprintf("mt: database error querying AMF registration for %s: %v", supi, err),
 		)
 	}
 

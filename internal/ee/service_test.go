@@ -83,6 +83,13 @@ func scanJSON(dest any, val json.RawMessage) {
 	}
 }
 
+// scanBool safely assigns a bool to a scan destination.
+func scanBool(dest any, val bool) {
+	if p, ok := dest.(*bool); ok {
+		*p = val
+	}
+}
+
 // assertProblemStatus asserts that err is a *ProblemDetails with the given HTTP status.
 func assertProblemStatus(t *testing.T, err error, wantStatus int) {
 	t.Helper()
@@ -346,7 +353,10 @@ func TestUpdateSubscription_Success(t *testing.T) {
 				scanString(dest[3], "featureA")
 				scanString(dest[4], "scef-001")
 				scanString(dest[5], "nf-001")
-				scanString(dest[6], "2025-01-01T00:00:00Z")
+				scanString(dest[6], "https://nef.example.com/restore")
+				scanBool(dest[7], false)
+				scanJSON(dest[8], nil)
+				scanString(dest[9], "2025-01-01T00:00:00Z")
 				return nil
 			}}
 		},
@@ -364,6 +374,9 @@ func TestUpdateSubscription_Success(t *testing.T) {
 	}
 	if result.ScefID != "scef-001" {
 		t.Errorf("expected scefId=scef-001, got %s", result.ScefID)
+	}
+	if result.DataRestorationCallbackURI != "https://nef.example.com/restore" {
+		t.Errorf("expected dataRestorationCallbackUri, got %s", result.DataRestorationCallbackURI)
 	}
 }
 
