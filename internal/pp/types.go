@@ -34,7 +34,7 @@ type VnGroupConfiguration struct {
 	SNssai                  json.RawMessage `json:"sNssai,omitempty"`
 	PduSessionTypes         []string        `json:"pduSessionTypes,omitempty"`
 	AppDescriptors          json.RawMessage `json:"appDescriptors,omitempty"`
-	SecondaryAuth           bool            `json:"secondaryAuth,omitempty"`
+	SecondaryAuth           *bool           `json:"secondaryAuth,omitempty"`
 	DnAaaAddress            json.RawMessage `json:"dnAaaAddress,omitempty"`
 	DnAaaFqdn               string          `json:"dnAaaFqdn,omitempty"`
 	Members                 []string        `json:"members,omitempty"`

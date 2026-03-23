@@ -89,6 +89,16 @@ func safeColumn(col string) string {
 	return col
 }
 
+// marshalNullableJSON returns the JSON encoding of raw, or nil if raw is nil.
+// json.RawMessage is a []byte alias so json.Marshal cannot fail for it.
+func marshalNullableJSON(raw json.RawMessage) []byte {
+	if raw == nil {
+		return nil
+	}
+	b, _ := json.Marshal(raw)
+	return b
+}
+
 // CreateSubscription creates a new event exposure subscription.
 //
 // Based on: docs/sbi-api-design.md §3.4 (POST /{ueIdentity}/ee-subscriptions)
@@ -115,16 +125,17 @@ func (s *Service) CreateSubscription(ctx context.Context, ueIdentity string, sub
 	// json.RawMessage is a []byte alias — json.Marshal cannot fail for it.
 	monCfgBytes, _ := json.Marshal(sub.MonitoringConfigurations)
 	repOptBytes, _ := json.Marshal(sub.ReportingOptions)
+	immRepBytes := marshalNullableJSON(sub.ImmediateReportData)
 
 	var subscriptionID string
 	row := s.db.QueryRow(ctx,
 		fmt.Sprintf(
-			`INSERT INTO udm.ee_subscriptions (%s, callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, data_restoration_callback_uri, excluded_unsubscribed_ues, expiry_time)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			`INSERT INTO udm.ee_subscriptions (%s, callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, data_restoration_callback_uri, excluded_unsubscribed_ues, immediate_report_data, expiry_time)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		 RETURNING subscription_id`, safeColumn(col)),
 		val, sub.CallbackReference, monCfgBytes, repOptBytes,
 		sub.SupportedFeatures, sub.ScefID, sub.NfInstanceID,
-		sub.DataRestorationCallbackURI, sub.ExcludedUnsubscribedUes, sub.ExpiryTime,
+		sub.DataRestorationCallbackURI, sub.ExcludedUnsubscribedUes, immRepBytes, sub.ExpiryTime,
 	)
 
 	if err := row.Scan(&subscriptionID); err != nil {
@@ -154,6 +165,18 @@ func (s *Service) UpdateSubscription(ctx context.Context, ueIdentity, subscripti
 
 	col, val := identityColumns(ueIdentity)
 
+	// Marshal JSONB patch fields.
+	var monCfgBytes, repOptBytes, immRepBytes []byte
+	if patch.MonitoringConfigurations != nil {
+		monCfgBytes, _ = json.Marshal(*patch.MonitoringConfigurations)
+	}
+	if patch.ReportingOptions != nil {
+		repOptBytes, _ = json.Marshal(*patch.ReportingOptions)
+	}
+	if patch.ImmediateReportData != nil {
+		immRepBytes, _ = json.Marshal(*patch.ImmediateReportData)
+	}
+
 	row := s.db.QueryRow(ctx,
 		fmt.Sprintf(
 			`UPDATE udm.ee_subscriptions
@@ -161,14 +184,26 @@ func (s *Service) UpdateSubscription(ctx context.Context, ueIdentity, subscripti
 		     monitoring_configurations = COALESCE($2, monitoring_configurations),
 		     reporting_options = COALESCE($3, reporting_options),
 		     supported_features = COALESCE($4, supported_features),
-		     expiry_time = COALESCE($5, expiry_time)
-		 WHERE subscription_id = $6 AND %s = $7
-		 RETURNING callback_reference, monitoring_configurations, reporting_options, supported_features, scef_id, nf_instance_id, expiry_time`, safeColumn(col)),
+		     expiry_time = COALESCE($5, expiry_time),
+		     scef_id = COALESCE($6, scef_id),
+		     nf_instance_id = COALESCE($7, nf_instance_id),
+		     data_restoration_callback_uri = COALESCE($8, data_restoration_callback_uri),
+		     excluded_unsubscribed_ues = COALESCE($9, excluded_unsubscribed_ues),
+		     immediate_report_data = COALESCE($10, immediate_report_data)
+		 WHERE subscription_id = $11 AND %s = $12
+		 RETURNING callback_reference, monitoring_configurations, reporting_options, supported_features,
+		           scef_id, nf_instance_id, data_restoration_callback_uri, excluded_unsubscribed_ues,
+		           immediate_report_data, expiry_time`, safeColumn(col)),
 		patch.CallbackReference,
-		patch.MonitoringConfigurations,
-		patch.ReportingOptions,
+		monCfgBytes,
+		repOptBytes,
 		patch.SupportedFeatures,
 		patch.ExpiryTime,
+		patch.ScefID,
+		patch.NfInstanceID,
+		patch.DataRestorationCallbackURI,
+		patch.ExcludedUnsubscribedUes,
+		immRepBytes,
 		subscriptionID, val,
 	)
 
@@ -180,6 +215,9 @@ func (s *Service) UpdateSubscription(ctx context.Context, ueIdentity, subscripti
 		&result.SupportedFeatures,
 		&result.ScefID,
 		&result.NfInstanceID,
+		&result.DataRestorationCallbackURI,
+		&result.ExcludedUnsubscribedUes,
+		&result.ImmediateReportData,
 		&result.ExpiryTime,
 	); err != nil {
 		return nil, errors.NewNotFound(

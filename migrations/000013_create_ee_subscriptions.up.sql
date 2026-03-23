@@ -12,7 +12,7 @@ CREATE TABLE udm.ee_subscriptions (
     supported_features      TEXT,
     subscription_data_subscriptions JSONB,
     scef_id                 TEXT,
-    nf_instance_id          UUID,
+    nf_instance_id          TEXT,
     data_restoration_callback_uri TEXT,
     excluded_unsubscribed_ues BOOLEAN   NOT NULL DEFAULT FALSE,
     immediate_report_data   JSONB,

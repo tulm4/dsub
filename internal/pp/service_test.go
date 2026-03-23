@@ -332,6 +332,13 @@ func scanBytes(dest any, val []byte) {
 	}
 }
 
+// scanStringSlice safely assigns a []string to a scan destination.
+func scanStringSlice(dest any, val []string) {
+	if p, ok := dest.(*[]string); ok {
+		*p = val
+	}
+}
+
 // ---------------------------------------------------------------------------
 // validateExtGroupID tests
 // ---------------------------------------------------------------------------
@@ -437,7 +444,7 @@ func TestGet5GVnGroup_Success(t *testing.T) {
 			return &mockRow{scanFn: func(dest ...any) error {
 				scanString(dest[0], "internet")                              // dnn
 				scanJSON(dest[1], json.RawMessage(`{"sst":1}`))              // s_nssai
-				scanBytes(dest[2], []byte(`["IPV4"]`))                       // pdu_session_types
+				scanStringSlice(dest[2], []string{"IPV4"})                   // pdu_session_types
 				// dest[3]: app_descriptors — nil
 				scanBool(dest[4], true)                                      // secondary_auth
 				// dest[5]: dn_aaa_address — nil
@@ -466,7 +473,7 @@ func TestGet5GVnGroup_Success(t *testing.T) {
 	if len(result.PduSessionTypes) != 1 || result.PduSessionTypes[0] != "IPV4" {
 		t.Errorf("unexpected pduSessionTypes: %v", result.PduSessionTypes)
 	}
-	if !result.SecondaryAuth {
+	if result.SecondaryAuth == nil || !*result.SecondaryAuth {
 		t.Error("expected secondaryAuth=true")
 	}
 	if len(result.Members) != 1 || result.Members[0] != "msisdn-12025551234" {
@@ -521,7 +528,7 @@ func TestModify5GVnGroup_Success(t *testing.T) {
 			return &mockRow{scanFn: func(dest ...any) error {
 				scanString(dest[0], "new-dnn")
 				scanJSON(dest[1], json.RawMessage(`{"sst":1}`))
-				scanBytes(dest[2], []byte(`["IPV4"]`))
+				scanStringSlice(dest[2], []string{"IPV4"})
 				// dest[3]: app_descriptors — nil
 				scanBool(dest[4], false)
 				// dest[5]: dn_aaa_address — nil
