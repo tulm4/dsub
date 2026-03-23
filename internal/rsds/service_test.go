@@ -112,9 +112,9 @@ func TestValidateUeID(t *testing.T) {
 		{name: "valid GPSI msisdn", input: "msisdn-12025551234", wantErr: false},
 		{name: "valid GPSI extid", input: "extid-user@example.com", wantErr: false},
 		{name: "valid SUPI", input: "imsi-001010000000001", wantErr: false},
-		{name: "valid extgroupid", input: "extgroupid-group1", wantErr: false},
 		{name: "empty string", input: "", wantErr: true},
 		{name: "bad prefix", input: "unknown-001", wantErr: true},
+		{name: "group ID rejected", input: "group-group1", wantErr: true},
 	}
 
 	for _, tc := range tests {
@@ -235,6 +235,34 @@ func TestReportSMDeliveryStatus_NullReport(t *testing.T) {
 	err := svc.ReportSMDeliveryStatus(context.Background(), testGPSI, req)
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestReportSMDeliveryStatus_InvalidGpsi(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	req := &SmDeliveryStatus{
+		Gpsi:           "bad-gpsi-format",
+		SmStatusReport: json.RawMessage(`{"status":"delivered"}`),
+	}
+	err := svc.ReportSMDeliveryStatus(context.Background(), testSUPI, req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	assertProblemStatus(t, err, http.StatusBadRequest)
+}
+
+func TestReportSMDeliveryStatus_GpsiMismatch(t *testing.T) {
+	svc := NewService(&mockDB{})
+
+	req := &SmDeliveryStatus{
+		Gpsi:           "msisdn-19995559999",
+		SmStatusReport: json.RawMessage(`{"status":"delivered"}`),
+	}
+	err := svc.ReportSMDeliveryStatus(context.Background(), testGPSI, req)
+	if err == nil {
+		t.Fatal("expected error for GPSI mismatch")
 	}
 	assertProblemStatus(t, err, http.StatusBadRequest)
 }

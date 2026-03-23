@@ -16,13 +16,6 @@ linters:
     - gosimple
     - gocritic
     - misspell
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
-
-linters:
   settings:
     errcheck:
       check-type-assertions: true
@@ -36,6 +29,11 @@ linters:
         - style
     misspell:
       locale: US
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 issues:
   max-issues-per-linter: 50

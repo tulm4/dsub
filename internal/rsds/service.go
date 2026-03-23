@@ -8,7 +8,6 @@ package rsds
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -40,6 +39,7 @@ func NewService(db DB) *Service {
 
 // validateUeID validates a ueIdentity path parameter. For RSDS endpoints
 // the ueIdentity may be a GPSI (msisdn-/extid-) or SUPI (imsi-).
+// Group identifiers are not supported for SMS delivery status reporting.
 func validateUeID(ueID string) error {
 	if identifiers.IsGPSI(ueID) {
 		return identifiers.ValidateGPSI(ueID)
@@ -47,17 +47,11 @@ func validateUeID(ueID string) error {
 	if identifiers.IsSUPI(ueID) {
 		return identifiers.ValidateSUPI(ueID)
 	}
-	if strings.HasPrefix(ueID, "extgroupid-") {
-		if len(ueID) <= len("extgroupid-") {
-			return fmt.Errorf("invalid extgroupid: must be extgroupid-<non-empty>: %s", ueID)
-		}
-		return nil
-	}
 	return fmt.Errorf("invalid identifier format: must be GPSI (msisdn-/extid-) or SUPI (imsi-): %s", ueID)
 }
 
-// ReportSMDeliveryStatus records the SMS delivery status and triggers
-// EE event notifications for matching subscriptions.
+// ReportSMDeliveryStatus records the SMS delivery status for the specified UE.
+// EE event notification propagation will be implemented in a future phase.
 //
 // Based on: docs/sbi-api-design.md §3.9 (POST /{ueIdentity}/sm-delivery-status)
 // 3GPP: TS 29.503 Nudm_RSDS — ReportSMDeliveryStatus
@@ -73,6 +67,20 @@ func (s *Service) ReportSMDeliveryStatus(ctx context.Context, ueIdentity string,
 	}
 	if req.Gpsi == "" {
 		return errors.NewBadRequest("rsds: gpsi is required", errors.CauseMandatoryIEMissing)
+	}
+	if err := identifiers.ValidateGPSI(req.Gpsi); err != nil {
+		return errors.NewBadRequest(
+			fmt.Sprintf("rsds: invalid gpsi: %s", err),
+			errors.CauseMandatoryIEIncorrect,
+		)
+	}
+	// When ueIdentity is a GPSI, it must match the gpsi in the request body to
+	// prevent persisting inconsistent UE identities.
+	if identifiers.IsGPSI(ueIdentity) && ueIdentity != req.Gpsi {
+		return errors.NewBadRequest(
+			"rsds: gpsi must match ueIdentity when ueIdentity is a GPSI",
+			errors.CauseMandatoryIEIncorrect,
+		)
 	}
 	if len(req.SmStatusReport) == 0 || string(req.SmStatusReport) == "null" {
 		return errors.NewBadRequest("rsds: smStatusReport is required", errors.CauseMandatoryIEMissing)
